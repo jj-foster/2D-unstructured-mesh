@@ -1,24 +1,6 @@
-/2D_arc.stp
-/2D_arc2.stp
-/2D_circle.stp
-/2D_shape.stp
-/2D_shape1.stp
-/2D_square.stp
 /data.csv
-/polyline1.stp
-/polyline2.stp
-/spline_control_vertex.stp
-/spline_interpolation.stp
-/spline_interpolation_loop.stp
-/spline_control_vertex2.stp
-/spline_control_vertex3.stp
-/spline_control_vertex4.stp
-/spline_control_vertex5.stp
-/spline_interpolation2.stp
-/spline_interpolation2b.stp
 /STEP Data.png
 /TODO.txt
 /__pycache__
-/test.py
 /b-splines.py
 /NURBS-python_test.py

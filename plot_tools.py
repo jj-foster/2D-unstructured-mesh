@@ -76,3 +76,27 @@ def Plot_circles(circles:list,ax=None)->plt:
             ax.plot(x,y,z,color='k')
 
     return plt
+
+def Plot_geom(geom_dict:dict,cartesian_points:bool=True,
+                   polylines:bool=True,circles:bool=True):
+    
+    points  =[x for x in geom_dict.values() if type(x).__name__=='Cartesian_point']
+    lines   =[x for x in geom_dict.values() if type(x).__name__=='Polyline']
+    circles_ =[x for x in geom_dict.values() if type(x).__name__=='Circle']
+    
+    fig=plt.figure()
+    ax=plt.axes(projection='3d')
+
+    if cartesian_points==True:
+        points_plt=Plot_cartesian_points(points,ax)
+    if polylines==True:
+        line_plt=Plot_polylines(lines,ax)
+    if circles==True:
+        circle_plt=Plot_circles(circles_,ax)
+
+    ax.set_xlabel('x')
+    ax.set_ylabel('y')
+    ax.set_zlabel('z')
+
+    plt.tight_layout()
+    plt.show()

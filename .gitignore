@@ -12,3 +12,5 @@
 /spline_interpolation_loop.stp
 /STEP Data.png
 /TODO.txt
+/__pycache__
+/test.py

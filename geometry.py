@@ -1,8 +1,9 @@
 import pandas as pd
 from matplotlib import pyplot as plt
 import numpy as np
+import re
 
-from plot_tools import Plot_cartesian_points, Plot_circles, Plot_polylines
+from plot_tools import Plot_geom
 
 DATA_HIERARCHY=[
     'CARTESIAN_POINT',
@@ -13,7 +14,7 @@ DATA_HIERARCHY=[
     'POLYLINE',
     'B_SPLINE_CURVE_WITH_KNOTS',
 ]
-print('hi')
+
 class Cartesian_point():
     def __init__(self,raw_data:pd.Series):
         properties=raw_data['properties']
@@ -56,13 +57,14 @@ class Axis2_placement_3d():
         self.ref_vector_id  =   int(properties[3][1:])
 
     def fill_data(self,geom_dict):
-        self.origin=geom_dict[self.origin_id].coords
-        self.axis=geom_dict[self.axis_id].vector
-        self.ref_vector=geom_dict[self.ref_vector_id].vector
+        self.origin     =   geom_dict[self.origin_id].coords
+        self.axis       =   geom_dict[self.axis_id].vector
+        self.ref_vector =   geom_dict[self.ref_vector_id].vector
 
         return None
 
 class Polyline():
+    """3D line connecting 2 cartesian points."""
     def __init__(self,raw_data:pd.Series):
         properties=raw_data['properties']
         points=properties[properties.find("(")+1:properties.find(")")].split(',')
@@ -77,10 +79,9 @@ class Polyline():
             self.name=None
 
     def fill_data(self,geom_dict):
-        self.points_coord=[geom_dict[self.points_id[0]].coords,
-                           geom_dict[self.points_id[1]].coords]
-
-
+        self.points_coord   =   [geom_dict[self.points_id[0]].coords,
+                                 geom_dict[self.points_id[1]].coords]
+        
         return None
 
 class Circle():
@@ -102,8 +103,8 @@ class Circle():
     def fill_data(self,geom_dict):
         axes_obj=geom_dict[self.plane_id]
 
-        self.centre=axes_obj.origin
-        self.plane=[np.cross(axes_obj.axis,axes_obj.ref_vector),axes_obj.ref_vector]
+        self.centre =   axes_obj.origin
+        self.plane  =   [np.cross(axes_obj.axis,axes_obj.ref_vector),axes_obj.ref_vector]
 
         return None
 
@@ -128,11 +129,40 @@ class Trimmed_curve():
             self.name=None
 
     def fill_data(self,geom_dict):
-        self.basis=geom_dict[self.basis_id] #   circle object
-        self.trim1=geom_dict[self.trim1_id].coords
-        self.trim2=geom_dict[self.trim2_id].coords
+        self.basis  =   geom_dict[self.basis_id] #   circle object
+        self.trim1  =   geom_dict[self.trim1_id].coords
+        self.trim2  =   geom_dict[self.trim2_id].coords
 
         geom_dict[self.basis_id].trimmed=True
+
+        return None
+
+class B_spline_curve_with_knots():
+    def __init__(self,raw_data):
+        #   idk how the splitting works lol
+        properties=[i.strip() for i in re.split(r',(?![^\(]*[\)])', raw_data['properties'])]
+        str_to_bool=lambda x:True if (x=="T") else False
+
+        self.id                 =   int(raw_data['id'][1:])
+        self.name               =   properties[0]
+        #   degree of polynomial as order n-1. Defined over 1+n locations (at knots)
+        self.degree             =   float(properties[1])
+        self.ctrl_pts           =   None
+        self.closed             =   str_to_bool(properties[4][1:-1])    #   bool
+        self.self_intersect     =   str_to_bool(properties[5][1:-1])    #   bool
+        #   Defines the number of times each knot in the knot list is to be repeated in constructing
+        #   the knot array
+        self.knot_multipicities =   [float(x) for x in properties[6][1:-1].split(',')]
+        #   List of distinct knots used to define B-spline basis functions
+        self.knots              =   [float(x) for x in properties[7][1:-1].split(',')]
+
+        self.ctrl_pts_ids       =   [int(x[1:]) for x in properties[2][1:-1].split(',')]
+                
+        if self.name=="":
+            self.name=None
+
+    def fill_data(self,geom_dict):
+        self.ctrl_pts   =   [geom_dict[x].coords for x in self.ctrl_pts_ids]
 
         return None
 
@@ -216,7 +246,8 @@ def Data_sort(geom_data:pd.Series)->dict:
             x=Polyline(row)
             geom_dict[x.id]=x
         elif row['tag']=='B_SPLINE_CURVE_WITH_KNOTS':
-            continue
+            x=B_spline_curve_with_knots(row)
+            geom_dict[x.id]=x
     
     #   Now all geom_dictetry objects are defined, each object is completed by following ID links 
     #   and filing in data.
@@ -234,17 +265,4 @@ if __name__=="__main__":
     geom_raw=Step_read('spline_interpolation_loop.stp',csv=True)
     geom_dict=Data_sort(geom_raw)
     
-    points  =[x for x in geom_dict.values() if type(x)==Cartesian_point]
-    lines   =[x for x in geom_dict.values() if type(x)==Polyline]
-    circles =[x for x in geom_dict.values() if type(x)==Circle]
-    
-    fig=plt.figure()
-    ax=plt.axes(projection='3d')
-
-    points_plt=Plot_cartesian_points(points,ax)
-    line_plt=Plot_polylines(lines,ax)
-    circle_plt=Plot_circles(circles,ax)
-
-    plt.tight_layout()
-    plt.show()
-    
+    Plot_geom(geom_dict,cartesian_points=True,polylines=True,circles=True)

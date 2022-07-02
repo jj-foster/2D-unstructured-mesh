@@ -10,8 +10,13 @@
 /spline_control_vertex.stp
 /spline_interpolation.stp
 /spline_interpolation_loop.stp
+/spline_control_vertex2.stp
+/spline_control_vertex3.stp
+/spline_control_vertex4.stp
+/spline_control_vertex5.stp
+/spline_interpolation2.stp
+/spline_interpolation2b.stp
 /STEP Data.png
 /TODO.txt
 /__pycache__
 /test.py
-/.gitignore

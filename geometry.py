@@ -2,6 +2,7 @@ import pandas as pd
 from matplotlib import pyplot as plt
 import numpy as np
 import re
+from scipy.interpolate import BSpline
 
 from plot_tools import Plot_geom
 
@@ -138,23 +139,38 @@ class Trimmed_curve():
         return None
 
 class B_spline_curve_with_knots():
+    """
+    THEORY:
+    Degree k       - The degree of polynomial as order n-1. Defined at knots over 1+n locations.
+    Control points - Bounding polyline coordinates.
+    Knots          - A vector defining continuity of curve with control points.
+                     Vector is composed of knot function values represented in a list.
+                     Knot values can be repeated to force curve to coincide with control point.
+                     If curve is clamped to start/end control points, the start/end knot values are repeated k+1 times.
+
+    'Interpolated' (curve goes through control point) and 'control vertex' are treated the same. CAD exports to common
+    B-Spline format for STEP files. Control points for 'interpolated' will be modified automatically.
+    """
     def __init__(self,raw_data):
-        #   idk how the splitting works lol
         properties=[i.strip() for i in re.split(r',(?![^\(]*[\)])', raw_data['properties'])]
         str_to_bool=lambda x:True if (x=="T") else False
 
-        self.id                 =   int(raw_data['id'][1:])
-        self.name               =   properties[0]
-        #   degree of polynomial as order n-1. Defined over 1+n locations (at knots)
-        self.degree             =   float(properties[1])
-        self.ctrl_pts           =   None
-        self.closed             =   str_to_bool(properties[4][1:-1])    #   bool
-        self.self_intersect     =   str_to_bool(properties[5][1:-1])    #   bool
-        #   Defines the number of times each knot in the knot list is to be repeated in constructing
-        #   the knot array
-        self.knot_multipicities =   [float(x) for x in properties[6][1:-1].split(',')]
-        #   List of distinct knots used to define B-spline basis functions
-        self.knots              =   [float(x) for x in properties[7][1:-1].split(',')]
+        self.id             =   int(raw_data['id'][1:])
+        self.name           =   properties[0]
+        self.degree         =   int(properties[1])
+        self.ctrl_pts       =   None
+        self.closed         =   str_to_bool(properties[4][1:-1])    #   bool
+        self.self_intersect =   str_to_bool(properties[5][1:-1])    #   bool
+        self.bspline        =   None
+
+        knot_multipicities  =   [int(x) for x in properties[6][1:-1].split(',')]
+        knot_values         =   [float(x) for x in properties[7][1:-1].split(',')]
+        knot_vector         =   []
+        
+        #   multiply out knot values into knot vector according to multipicity values
+        for i,_ in enumerate(knot_values):
+            knot_vector.append([knot_values[i]]*knot_multipicities[i])
+        self.knot_vector=[x for xs in knot_vector for x in xs]
 
         self.ctrl_pts_ids       =   [int(x[1:]) for x in properties[2][1:-1].split(',')]
                 
@@ -162,7 +178,11 @@ class B_spline_curve_with_knots():
             self.name=None
 
     def fill_data(self,geom_dict):
-        self.ctrl_pts   =   [geom_dict[x].coords for x in self.ctrl_pts_ids]
+        #   get coordinate values for control points
+        self.ctrl_pts   =   np.array([geom_dict[x].coords for x in self.ctrl_pts_ids])
+
+        #   create associated scipy B-spline object
+        self.bspline    =   BSpline(self.knot_vector,self.ctrl_pts,self.degree)
 
         return None
 
@@ -265,4 +285,6 @@ if __name__=="__main__":
     geom_raw=Step_read('spline_interpolation_loop.stp',csv=True)
     geom_dict=Data_sort(geom_raw)
     
+
+
     Plot_geom(geom_dict,cartesian_points=True,polylines=True,circles=True)

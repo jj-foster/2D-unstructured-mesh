@@ -282,7 +282,7 @@ def Data_sort(geom_data:pd.Series)->dict:
     return geom_dict
 
 if __name__=="__main__":
-    geom_raw=Step_read('spline_interpolation_loop.stp',csv=True)
+    geom_raw=Step_read('2D_shape.stp',csv=True)
     geom_dict=Data_sort(geom_raw)
     
 

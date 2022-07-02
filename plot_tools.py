@@ -7,18 +7,13 @@ def Plot_cartesian_points(points:list,ax=None)->plt:
         fig=plt.figure()
         ax=plt.axes(projection='3d')
 
-    """
-    #   Plots the origin seperately
+    #   Removes origin from plot
     points_=[]
     for point in points:
-        dx=isclose(point.coords[0],0,abs_tol=1e-13)
-        dy=isclose(point.coords[1],0,abs_tol=1e-13)
-        dz=isclose(point.coords[2],0,abs_tol=1e-13)
-
-        if dx==False or dy==False or dz==False:
+        if point.name!=None and np.array_equal(point.coords,[0,0,0])!=True:
             points_.append(point)
     points=points_
-    """
+
     x=[point.coords[0] for point in points]
     y=[point.coords[1] for point in points]
     #z=[point.coords[2] for point in points]
@@ -89,7 +84,6 @@ def Plot_bspline(bsplines:list,ax=None)->plt:
         range=np.linspace(
             bspline.knot_vector[0],
             bspline.knot_vector[-1],
-            #bspline.ctrl_pts.shape[0]-(bspline.degree*(1-bspline.closed)),
             POINTS
         )
         x,y,z=bspline.bspline(range).T

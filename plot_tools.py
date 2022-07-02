@@ -1,6 +1,5 @@
 from matplotlib import pyplot as plt
 import numpy as np
-from math import isclose
 
 def Plot_cartesian_points(points:list,ax=None)->plt:
     if ax==None:
@@ -18,7 +17,9 @@ def Plot_cartesian_points(points:list,ax=None)->plt:
     y=[point.coords[1] for point in points]
     #z=[point.coords[2] for point in points]
 
-    ax.scatter(x,y,color='r')
+    max_dim=abs(max([max(x),max(y)]))
+
+    ax.scatter(x,y,color='r',s=max_dim/10)
     #ax.scatter(0,0,color='g')
 
     return plt
@@ -37,7 +38,7 @@ def Plot_polylines(polylines:list,ax=None)->plt:
     return plt
 
 def Plot_circles(circles:list,ax=None)->plt:
-    POINTS=50
+    POINTS=100
 
     if ax==None:
         fig=plt.figure()
@@ -51,7 +52,7 @@ def Plot_circles(circles:list,ax=None)->plt:
 
         #   Generates points around circle for plot
         coords=[]
-        for i in range(POINTS):
+        for i in range(POINTS+1):
             t=i/POINTS
             theta=t*2*np.pi
 
@@ -74,7 +75,6 @@ def Plot_circles(circles:list,ax=None)->plt:
     return plt
 
 def Plot_bspline(bsplines:list,ax=None)->plt:
-    POINTS=500
 
     if ax==None:
         fig=plt.figure()
@@ -84,7 +84,7 @@ def Plot_bspline(bsplines:list,ax=None)->plt:
         range=np.linspace(
             bspline.knot_vector[0],
             bspline.knot_vector[-1],
-            POINTS
+            bspline.ctrl_pts.shape[0]*100
         )
         x,y,z=bspline.bspline(range).T
         

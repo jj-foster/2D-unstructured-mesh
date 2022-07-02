@@ -282,9 +282,7 @@ def Data_sort(geom_data:pd.Series)->dict:
     return geom_dict
 
 if __name__=="__main__":
-    geom_raw=Step_read('2D_shape.stp',csv=True)
+    geom_raw=Step_read('NACA0012H.step',csv=True)
     geom_dict=Data_sort(geom_raw)
-    
 
-
-    Plot_geom(geom_dict,cartesian_points=True,polylines=True,circles=True)
+    Plot_geom(geom_dict,cartesian_points=False,polylines=True,circles=True)

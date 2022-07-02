@@ -13,7 +13,7 @@ DATA_HIERARCHY=[
     'POLYLINE',
     'B_SPLINE_CURVE_WITH_KNOTS',
 ]
-
+print('hi')
 class Cartesian_point():
     def __init__(self,raw_data:pd.Series):
         properties=raw_data['properties']

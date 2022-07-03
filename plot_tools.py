@@ -121,3 +121,13 @@ def Plot_geom(geom_dict:dict,cartesian_points:bool=True,
 
     plt.tight_layout()
     plt.show()
+
+def Plot_nodes(nodes:list):
+    x,y,z=nodes.T
+    fig=plt.figure()
+    ax=plt.axes()
+    ax.plot(x,y)
+    ax.set_aspect('equal')
+    plt.show()
+
+    return None

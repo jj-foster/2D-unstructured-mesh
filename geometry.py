@@ -4,7 +4,7 @@ import numpy as np
 import re
 from scipy.interpolate import BSpline
 
-from plot_tools import Plot_geom
+from plot_tools import Plot_geom, Plot_cartesian_points
 
 DATA_HIERARCHY=[
     'CARTESIAN_POINT',
@@ -21,9 +21,10 @@ class Cartesian_point():
         properties=raw_data['properties']
         coords=properties[properties.find("(")+1:properties.find(")")].split(',')
         
-        self.id     =   int(raw_data['id'][1:])
-        self.name   =   properties.split(',')[0][1:-1]
-        self.coords =   np.array([float(x) for x in coords])
+        self.id         =   int(raw_data['id'][1:])
+        self.name       =   properties.split(',')[0][1:-1]
+        self.coords     =   np.array([float(x) for x in coords])
+        self.bounding   =  False
 
         if self.name=="":
             self.name=None
@@ -35,9 +36,10 @@ class Direction():
         properties=raw_data['properties']
         vector =   properties[properties.find("(")+1:properties.find(")")].split(',')
 
-        self.id     =   int(raw_data['id'][1:])
-        self.name   =   properties.split(',')[0][1:-1]
-        self.vector =   np.array([float(x) for x in vector])
+        self.id         =   int(raw_data['id'][1:])
+        self.name       =   properties.split(',')[0][1:-1]
+        self.vector     =   np.array([float(x) for x in vector])
+        self.bounding   =  False
 
         if self.name=="":
             self.name=None
@@ -52,6 +54,7 @@ class Axis2_placement_3d():
         self.origin     =   None
         self.axis       =   None
         self.ref_vector =   None
+        self.bounding   =   False
 
         self.origin_id      =   int(properties[1][1:])
         self.axis_id        =   int(properties[2][1:])
@@ -64,54 +67,9 @@ class Axis2_placement_3d():
 
         return None
 
-class Polyline():
-    """3D line connecting 2 cartesian points."""
-    def __init__(self,raw_data:pd.Series):
-        properties=raw_data['properties']
-        points=properties[properties.find("(")+1:properties.find(")")].split(',')
-
-        self.id             =   int(raw_data['id'][1:])
-        self.name           =   properties.split(',')[0][1:-1]
-        self.points_coord   =   None    #   in form [[x0,y0,z0],[x1,y1,z1]]
-
-        self.points_id      =   [int(x[1:]) for x in points]
-
-        if self.name=="":
-            self.name=None
-
-    def fill_data(self,geom_dict):
-        self.points_coord   =   [geom_dict[self.points_id[0]].coords,
-                                 geom_dict[self.points_id[1]].coords]
-        
-        return None
-
-class Circle():
-    def __init__(self,raw_data:pd.Series):
-        properties=raw_data['properties'].split(',')
-
-        self.id         =   int(raw_data['id'][1:])
-        self.name       =   properties[0][1:-1]
-        self.radius     =   float(properties[2])
-        self.plane      =   None
-        self.centre     =   None
-        self.trimmed    =   False
-        
-        self.plane_id    =   int(properties[1][1:])
-
-        if self.name=="":
-            self.name=None
-
-    def fill_data(self,geom_dict):
-        axes_obj=geom_dict[self.plane_id]
-
-        self.centre =   axes_obj.origin
-        self.plane  =   [np.cross(axes_obj.axis,axes_obj.ref_vector),axes_obj.ref_vector]
-
-        return None
-
 class Trimmed_curve():
     """
-    Overwites a circle. Trims from trim1 to trim2.
+    Overwites a circle. Trims curve between trim1 and trim2
     """
     def __init__(self,raw_data:pd.Series):
         properties=raw_data['properties'].split(',')
@@ -121,6 +79,7 @@ class Trimmed_curve():
         self.basis      =   None
         self.trim1      =   None
         self.trim2      =   None
+        self.bounding   =   False
 
         self.basis_id   =   int(properties[1][1:])
         self.trim1_id   =   int(properties[2][2:])
@@ -134,9 +93,109 @@ class Trimmed_curve():
         self.trim1  =   geom_dict[self.trim1_id].coords
         self.trim2  =   geom_dict[self.trim2_id].coords
 
-        geom_dict[self.basis_id].trimmed=True
+        geom_dict[self.basis_id].trim=self
 
         return None
+
+class Polyline():
+    """3D line connecting 2 cartesian points."""
+    def __init__(self,raw_data:pd.Series):
+        properties=raw_data['properties']
+        points=properties[properties.find("(")+1:properties.find(")")].split(',')
+
+        self.id         =   int(raw_data['id'][1:])
+        self.name       =   properties.split(',')[0][1:-1]
+        self.points     =   None    #   in form [[x0,y0,z0],[x1,y1,z1]]
+        self.bounding   =   True
+
+        self.points_id  =   [int(x[1:]) for x in points]
+
+        if self.name=="":
+            self.name=None
+
+    def fill_data(self,geom_dict):
+        self.points =   [geom_dict[self.points_id[0]].coords,
+                        geom_dict[self.points_id[1]].coords]
+        
+        return None
+
+    def gen_nodes(self,spacing):
+        vector=self.points[1]-self.points[0]
+        length=np.linalg.norm(vector)
+        N=int(round(length/spacing,0))+1
+
+        nodes=np.zeros([N,3])
+        for i,node in enumerate(nodes):
+            t=i/(N-1)
+            nodes[i]=self.points[0]+t*vector
+
+        return nodes
+
+class Circle():
+    def __init__(self,raw_data:pd.Series):
+        properties=raw_data['properties'].split(',')
+
+        self.id         =   int(raw_data['id'][1:])
+        self.name       =   properties[0][1:-1]
+        self.radius     =   float(properties[2])
+        self.plane      =   None
+        self.centre     =   None
+        self.trim       =   None
+        self.bounding   =   True
+        
+        self.plane_id    =   int(properties[1][1:])
+
+        if self.name=="":
+            self.name=None
+
+    def fill_data(self,geom_dict):
+        axes_obj=geom_dict[self.plane_id]
+
+        self.centre =   axes_obj.origin
+        self.plane  =   [axes_obj.ref_vector,np.cross(axes_obj.axis,axes_obj.ref_vector)]
+
+        return None
+
+    def gen_nodes(self,spacing):
+        v1=self.plane[0]
+        v2=self.plane[1]
+
+        if self.trim:
+            start=self.trim.trim1
+            end=self.trim.trim2
+        else: 
+            start=end=self.centre+v1*self.radius
+
+        CR=self.radius*v1
+        CS=start-self.centre
+        CE=end-self.centre
+
+        #   angle between v1 and centre to trim1 vector
+        phi=np.arccos(np.dot(CR,CS)/(np.linalg.norm(CR)*np.linalg.norm(CS)))
+        #   ensures full clockwise angle (starting at x' axis)
+        if np.dot(v1,CS)<0:
+            phi=2*np.pi-phi
+
+        #   rotate v1,v2 to align with first trim coordinate
+        v1_=v1*np.cos(phi)+v2*np.sin(phi)
+        v2_=-v1*np.sin(phi)+v2*np.cos(phi)
+
+        #   angle to draw between start and end points
+        theta_=np.arccos(np.dot(CE,CS)/(np.linalg.norm(CS)*np.linalg.norm(CE)))
+        if np.dot(v2_,CE)<0:
+            theta_=2*np.pi-theta_
+
+        length=self.radius*(theta_)
+
+        #   generate theta range between start/end coords.
+        N=int(round(length/spacing,0))
+        thetas=np.linspace(0,theta_,N)
+
+        nodes=np.zeros([N,3])
+        for i,theta in enumerate(thetas):
+            nodes[i]=self.centre+self.radius*(np.cos(theta)*v1_+np.sin(theta)*v2_)
+
+        return nodes
 
 class B_spline_curve_with_knots():
     """
@@ -162,6 +221,7 @@ class B_spline_curve_with_knots():
         self.closed         =   str_to_bool(properties[4][1:-1])    #   bool
         self.self_intersect =   str_to_bool(properties[5][1:-1])    #   bool
         self.bspline        =   None
+        self.bounding       =   True
 
         knot_multipicities  =   [int(x) for x in properties[6][1:-1].split(',')]
         knot_values         =   [float(x) for x in properties[7][1:-1].split(',')]
@@ -282,7 +342,7 @@ def Data_sort(geom_data:pd.Series)->dict:
     return geom_dict
 
 if __name__=="__main__":
-    geom_raw=Step_read('NACA0012H.step',csv=True)
+    geom_raw=Step_read('2D_arc.stp',csv=True)
     geom_dict=Data_sort(geom_raw)
 
-    Plot_geom(geom_dict,cartesian_points=False,polylines=True,circles=True)
+    #Plot_geom(geom_dict,cartesian_points=False,polylines=True,circles=True)

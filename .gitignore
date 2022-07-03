@@ -2,5 +2,8 @@
 /STEP Data.png
 /TODO.txt
 /__pycache__
-/NACA0012H.step
+/NACA0012H.stp
 /circle.stp
+/polyline2.stp
+/spline_interpolation2.stp
+/2D_arc.stp

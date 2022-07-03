@@ -30,8 +30,8 @@ def Plot_polylines(polylines:list,ax=None)->plt:
         ax=plt.axes(projection='3d')
     
     for line in polylines:
-        x=[line.points_coord[0][0],line.points_coord[1][0]]
-        y=[line.points_coord[0][1],line.points_coord[1][1]]
+        x=[line.points[0][0],line.points[1][0]]
+        y=[line.points[0][1],line.points[1][1]]
         #z=[line.points_coord[0][2],line.points_coord[1][2]]
         ax.plot(x,y,color='k')
 

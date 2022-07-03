@@ -32,4 +32,4 @@ class Mesh():
         return line_nodes
 
 if __name__=="__main__":
-    mesh=Mesh(file='2D_arc.stp',spacing=0.2)
+    mesh=Mesh(file='spline_interpolation2.stp',spacing=0.2)

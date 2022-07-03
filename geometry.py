@@ -1,8 +1,8 @@
 import pandas as pd
-from matplotlib import pyplot as plt
 import numpy as np
 import re
 from scipy.interpolate import BSpline
+from matplotlib import pyplot as plt
 
 from plot_tools import Plot_geom, Plot_cartesian_points
 
@@ -182,7 +182,7 @@ class Circle():
 
         #   angle to draw between start and end points
         theta_=np.arccos(np.dot(CE,CS)/(np.linalg.norm(CS)*np.linalg.norm(CE)))
-        if np.dot(v2_,CE)<0:
+        if np.dot(v2_,CE)<=0:
             theta_=2*np.pi-theta_
 
         length=self.radius*(theta_)
@@ -245,6 +245,30 @@ class B_spline_curve_with_knots():
         self.bspline    =   BSpline(self.knot_vector,self.ctrl_pts,self.degree)
 
         return None
+
+    def gen_nodes(self,spacing:float):
+        N_initial=int(self.ctrl_pts.shape[0]*100)
+
+        spline_range_initial=np.linspace(
+            self.knot_vector[0],
+            self.knot_vector[-1],
+            N_initial
+        )
+        points=self.bspline(spline_range_initial)
+
+        length=0
+        for i in range(len(points)-1):
+            length+=np.linalg.norm(points[i]-points[i+1])
+
+        N=int(round(length/spacing,0))
+        spline_range=np.linspace(
+            self.knot_vector[0],
+            self.knot_vector[-1],
+            N
+        )
+        nodes=self.bspline(spline_range)
+        
+        return nodes
 
 def Step_read(file:str,csv=False)->pd.Series:
     """

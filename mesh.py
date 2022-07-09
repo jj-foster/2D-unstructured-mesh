@@ -18,7 +18,7 @@ class Mesh():
         
     def read(self,file:str)->list:
         domain=None
-        geom_raw=Step_read(file,csv=True)
+        geom_raw=Step_read(file,csv=False)
         geom_dict=Data_sort(geom_raw)
         
         bounding_lines=[x for x in geom_dict.values() if x.bounding]
@@ -35,5 +35,5 @@ class Mesh():
         return line_nodes
 
 if __name__=="__main__":
-    mesh=Mesh(file='NACA0012H.stp',spacing=3)
+    mesh=Mesh(file='spline_interpolation2.stp',spacing=1)
     Plot_nodes_2d(mesh.line_nodes)

@@ -1,10 +1,11 @@
+from multiprocessing.sharedctypes import Value
 import pandas as pd
 import numpy as np
 import re
-from scipy.interpolate import BSpline
+from scipy.interpolate import BSpline, splev
 from matplotlib import pyplot as plt
 
-from plot_tools import Plot_geom, Plot_cartesian_points
+from plot_tools import Plot_geom, Plot_nodes_2d
 
 DATA_HIERARCHY=[
     'CARTESIAN_POINT',
@@ -184,8 +185,11 @@ class Circle():
         theta_=np.arccos(np.dot(CE,CS)/(np.linalg.norm(CS)*np.linalg.norm(CE)))
         if np.dot(v2_,CE)<=0:
             theta_=2*np.pi-theta_
-
+        
         length=self.radius*(theta_)
+        #   fix for tube_keel.stp - check which circles are missing
+        if np.isnan(length):
+            length=0
 
         #   generate theta range between start/end coords.
         N=int(round(length/spacing,0))
@@ -224,12 +228,12 @@ class B_spline_curve_with_knots():
         self.bounding       =   True
 
         knot_multipicities  =   [int(x) for x in properties[6][1:-1].split(',')]
-        knot_values         =   [float(x) for x in properties[7][1:-1].split(',')]
+        self.knot_values         =   [float(x) for x in properties[7][1:-1].split(',')]
         knot_vector         =   []
         
         #   multiply out knot values into knot vector according to multipicity values
-        for i,_ in enumerate(knot_values):
-            knot_vector.append([knot_values[i]]*knot_multipicities[i])
+        for i,_ in enumerate(self.knot_values):
+            knot_vector.append([self.knot_values[i]]*knot_multipicities[i])
         self.knot_vector=[x for xs in knot_vector for x in xs]
 
         self.ctrl_pts_ids       =   [int(x[1:]) for x in properties[2][1:-1].split(',')]
@@ -247,7 +251,10 @@ class B_spline_curve_with_knots():
         return None
 
     def gen_nodes(self,spacing:float):
-        N_initial=int(self.ctrl_pts.shape[0]*100)
+        #   Initially overpopulates points on spline to calculate length and coursen.
+        #   Numpy wil generate points with a density dependant on the knot and control point
+        #   density. Hence if CAD outputs an irregular spline, numpy will generate irregular nodes.
+        N_initial=int(self.ctrl_pts.shape[0]*30)
 
         spline_range_initial=np.linspace(
             self.knot_vector[0],
@@ -256,18 +263,45 @@ class B_spline_curve_with_knots():
         )
         points=self.bspline(spline_range_initial)
 
+        #   calculate arclength of spline
         length=0
+        length_list=[0]
         for i in range(len(points)-1):
-            length+=np.linalg.norm(points[i]-points[i+1])
+            dL=np.linalg.norm(points[i]-points[i+1])
+            length+=dL
+            length_list.append(length)
 
         N=int(round(length/spacing,0))
-        spline_range=np.linspace(
-            self.knot_vector[0],
-            self.knot_vector[-1],
-            N
-        )
-        nodes=self.bspline(spline_range)
+        spacing_=length/N
         
+        #   Searches for cumulative lengths between which each equadistant point lies referencing
+        #   length list. The equidistant point is linearly interpolated between the points either
+        #   side of it. 
+        equidistant_points=np.zeros([N,3])
+        dL=0
+        for i in range(N):
+            #   Binary search for index where cumulative length would lie.
+            j_L=np.searchsorted(length_list,dL,side='left')
+            j_R=j_L+1
+
+            #   Gets points and cumulative lengths either side of the equadistant point.
+            p_L=points[j_L]
+            p_R=points[j_R]
+            L_L=length_list[j_L]
+            L_R=length_list[j_R]
+            
+            #   Linear interpolation
+            ratio=(dL-L_L)/(L_R-L_L)
+
+            p_LR=p_R-p_L
+            p_j=p_L+ratio*p_LR
+
+            equidistant_points[i]=p_j
+
+            dL+=spacing_
+
+        nodes=equidistant_points
+
         return nodes
 
 def Step_read(file:str,csv=False)->pd.Series:
@@ -342,7 +376,7 @@ def Data_sort(geom_data:pd.Series)->dict:
             geom_dict[x.id]=x
         elif row['tag']=='CIRCLE':
             x=Circle(row)
-            geom_dict[x.id]=x
+            #geom_dict[x.id]=x
         elif row['tag']=='TRIMMED_CURVE':
             x=Trimmed_curve(row)
             geom_dict[x.id]=x
@@ -366,7 +400,7 @@ def Data_sort(geom_data:pd.Series)->dict:
     return geom_dict
 
 if __name__=="__main__":
-    geom_raw=Step_read('2D_arc.stp',csv=True)
+    geom_raw=Step_read('spline_interpolation2.stp',csv=True)
     geom_dict=Data_sort(geom_raw)
 
-    #Plot_geom(geom_dict,cartesian_points=False,polylines=True,circles=True)
+    Plot_geom(geom_dict,cartesian_points=True,polylines=False,circles=True)

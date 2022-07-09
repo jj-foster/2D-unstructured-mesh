@@ -376,7 +376,7 @@ def Data_sort(geom_data:pd.Series)->dict:
             geom_dict[x.id]=x
         elif row['tag']=='CIRCLE':
             x=Circle(row)
-            #geom_dict[x.id]=x
+            geom_dict[x.id]=x
         elif row['tag']=='TRIMMED_CURVE':
             x=Trimmed_curve(row)
             geom_dict[x.id]=x

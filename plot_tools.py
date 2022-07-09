@@ -13,13 +13,11 @@ def Plot_cartesian_points(points:list,ax=None)->plt:
             points_.append(point)
     points=points_
 
-    x=[point.coords[0] for point in points]
-    y=[point.coords[1] for point in points]
-    #z=[point.coords[2] for point in points]
+    x,y,z=points.T
 
     max_dim=abs(max([max(x),max(y)]))
 
-    ax.scatter(x,y,color='r',s=max_dim/10)
+    ax.scatter(x,y,color='r',s=max_dim/2)
     #ax.scatter(0,0,color='g')
 
     return plt
@@ -122,12 +120,43 @@ def Plot_geom(geom_dict:dict,cartesian_points:bool=True,
     plt.tight_layout()
     plt.show()
 
-def Plot_nodes(nodes:list):
+def Plot_nodes_3d(nodes:list):
     x,y,z=nodes.T
+
+    #   basically if in one plane
+    if np.ptp(x)!=0:
+        x_aspect=np.ptp(x)
+    else:
+        x_aspect=0.0000001
+    if np.ptp(y)!=0:
+        y_aspect=np.ptp(y)
+    else:
+        y_aspect=0.0000001
+    if np.ptp(z)!=0:
+        z_aspect=np.ptp(z)
+    else:
+        z_aspect=0.0000001
+
+    fig=plt.figure()
+    ax=plt.axes(projection='3d')
+
+    ax.scatter(x,y,z,s=5)
+    ax.set_box_aspect((x_aspect,y_aspect,z_aspect))
+    plt.tight_layout()
+    plt.show()
+
+    return None
+
+def Plot_nodes_2d(nodes:np.ndarray):
+    x,y,z=nodes.T
+
     fig=plt.figure()
     ax=plt.axes()
-    ax.plot(x,y)
+
+    ax.scatter(x,y,s=5)
+
     ax.set_aspect('equal')
+    plt.tight_layout()
     plt.show()
 
     return None

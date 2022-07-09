@@ -6,7 +6,7 @@ Mesh generation handled here.
 import numpy as np
 
 from geometry import Step_read, Data_sort
-from plot_tools import Plot_nodes
+from plot_tools import Plot_nodes_3d,Plot_nodes_2d
 
 class Mesh():
     def __init__(self,file:str,spacing:float)->None:
@@ -35,5 +35,5 @@ class Mesh():
         return line_nodes
 
 if __name__=="__main__":
-    mesh=Mesh(file='NACA0012H.stp',spacing=1)
-    Plot_nodes(mesh.line_nodes)
+    mesh=Mesh(file='NACA0012H.stp',spacing=3)
+    Plot_nodes_2d(mesh.line_nodes)

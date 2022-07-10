@@ -3,9 +3,15 @@
 /TODO.txt
 /__pycache__
 /NACA0012H.stp
+/NACA0012H_surface.stp
 /circle.stp
 /polyline2.stp
-/spline_interpolation2.stp
+/spline.stp
 /2D_arc.stp
 /tube_keel.stp
 /cylinder.stp
+/mesh types.png
+/meshing.txt
+/square_donut.stp
+/surface_split.stp
+/square_donut2.stp

@@ -7,14 +7,40 @@ from matplotlib import pyplot as plt
 
 from plot_tools import Plot_geom, Plot_nodes_2d
 
+"""
+ADVANCED_FACE
+    PLANE
+    FACE_OUTER_BOUND+FACE_BOUND
+        EDGE_LOOP
+            ORIENTED EDGE
+                EDGE_CURVE
+                    VERTEX POINT
+                    <geometry object>
+
+geometry object:
+    LINE
+    POLYLINE
+    CIRCLE
+    BSPLINE
+"""
+
 DATA_HIERARCHY=[
     'CARTESIAN_POINT',
+    'VERTEX_POINT',
     'DIRECTION',
+    'VECTOR',
+    'LINE',
     'AXIS2_PLACEMENT_3D',
-    'CIRCLE',
+    'PLANE',
     'TRIMMED_CURVE',
     'POLYLINE',
+    'CIRCLE',
     'B_SPLINE_CURVE_WITH_KNOTS',
+    'EDGE_CURVE',
+    'ORIENTED_EDGE',
+    'EDGE_LOOP',
+    'FACE_BOUND',
+    'ADVANCED_FACE'
 ]
 
 class Cartesian_point():
@@ -25,10 +51,28 @@ class Cartesian_point():
         self.id         =   int(raw_data['id'][1:])
         self.name       =   properties.split(',')[0][1:-1]
         self.coords     =   np.array([float(x) for x in coords])
-        self.bounding   =  False
+        self.child      =   True
 
         if self.name=="":
             self.name=None
+
+        return None
+
+class Vertex_point():
+    def __init__(self,raw_data):
+        properties=raw_data['properties'].split(',')
+
+        self.id         =   int(raw_data['id'][1:])
+        self.name       =   properties[0][1:-1]
+        self.coords     =   None
+
+        self.coords_id  =   int(properties[1][1:])
+
+        if self.name=="":
+            self.name=None
+
+    def fill_data(self,geom_dict):
+        self.coords =   geom_dict[self.coords_id].coords
 
         return None
 
@@ -40,10 +84,53 @@ class Direction():
         self.id         =   int(raw_data['id'][1:])
         self.name       =   properties.split(',')[0][1:-1]
         self.vector     =   np.array([float(x) for x in vector])
-        self.bounding   =  False
 
         if self.name=="":
             self.name=None
+
+class Vector():
+    def __init__(self,raw_data):
+        properties=raw_data['properties'].split(',')
+
+        self.id             =   int(raw_data['id'][1:])
+        self.name           =   properties[0][1:-1]
+        self.length         =   float(properties[2])
+        self.vector         =   None
+        
+        self.direction_id   =   int(properties[1][1:])
+
+        if self.name=="":
+            self.name=None
+
+    def fill_data(self,geom_dict):
+        self.vector =   geom_dict[self.direction_id].vector
+
+        return None
+
+class Line():
+    def __init__(self,raw_data):
+        properties=raw_data['properties'].split(',')
+
+        self.id         =   int(raw_data['id'][1:])
+        self.name       =   properties[0][1:-1]
+        self.vector     =   None
+        self.length     =   None
+        self.point      =   None
+
+        self.point_id   =   int(properties[1][1:])
+        self.vector_id  =   int(properties[2][1:])
+
+        if self.name=="":
+            self.name=None
+
+    def fill_data(self,geom_dict):
+        vector_obj  =   geom_dict[self.vector_id]
+
+        self.vector =   vector_obj.vector
+        self.length =   vector_obj.length
+        self.point  =   geom_dict[self.point_id].coords
+
+        return None
 
 class Axis2_placement_3d():
     """Basically a local coordinate system definition"""
@@ -55,7 +142,6 @@ class Axis2_placement_3d():
         self.origin     =   None
         self.axis       =   None
         self.ref_vector =   None
-        self.bounding   =   False
 
         self.origin_id      =   int(properties[1][1:])
         self.axis_id        =   int(properties[2][1:])
@@ -65,6 +151,24 @@ class Axis2_placement_3d():
         self.origin     =   geom_dict[self.origin_id].coords
         self.axis       =   geom_dict[self.axis_id].vector
         self.ref_vector =   geom_dict[self.ref_vector_id].vector
+
+        return None
+
+class Plane():
+    def __init__(self,raw_data):
+        properties=raw_data['properties'].split(',')
+
+        self.id         =   int(raw_data['id'][1:])
+        self.name       =   properties[0][1:-1]
+        self.axis       =   None
+        
+        self.axis_id    =   int(properties[1][1:])
+
+        if self.name=="":
+            self.name=None
+
+    def fill_data(self,geom_dict):
+        self.axis =   geom_dict[self.axis_id]
 
         return None
 
@@ -80,7 +184,7 @@ class Trimmed_curve():
         self.basis      =   None
         self.trim1      =   None
         self.trim2      =   None
-        self.bounding   =   False
+        self.child      =   True
 
         self.basis_id   =   int(properties[1][1:])
         self.trim1_id   =   int(properties[2][2:])
@@ -107,7 +211,6 @@ class Polyline():
         self.id         =   int(raw_data['id'][1:])
         self.name       =   properties.split(',')[0][1:-1]
         self.points     =   None    #   in form [[x0,y0,z0],[x1,y1,z1]]
-        self.bounding   =   True
 
         self.points_id  =   [int(x[1:]) for x in points]
 
@@ -142,7 +245,6 @@ class Circle():
         self.plane      =   None
         self.centre     =   None
         self.trim       =   None
-        self.bounding   =   True
         
         self.plane_id    =   int(properties[1][1:])
 
@@ -157,7 +259,7 @@ class Circle():
 
         return None
 
-    def gen_nodes(self,spacing):
+    def gen_nodes(self,spacing=None,N=None):
         v1=self.plane[0]
         v2=self.plane[1]
 
@@ -192,7 +294,12 @@ class Circle():
             length=0
 
         #   generate theta range between start/end coords.
-        N=int(round(length/spacing,0))
+        if N==None and spacing!=None:
+            N=int(round(length/spacing,0))
+        elif N!=None and spacing==None:
+            pass
+        else:
+            raise ValueError("No spacing or node number specified.")
         thetas=np.linspace(0,theta_,N)
 
         nodes=np.zeros([N,3])
@@ -225,7 +332,6 @@ class B_spline_curve_with_knots():
         self.closed         =   str_to_bool(properties[4][1:-1])    #   bool
         self.self_intersect =   str_to_bool(properties[5][1:-1])    #   bool
         self.bspline        =   None
-        self.bounding       =   True
 
         knot_multipicities  =   [int(x) for x in properties[6][1:-1].split(',')]
         self.knot_values         =   [float(x) for x in properties[7][1:-1].split(',')]
@@ -251,9 +357,6 @@ class B_spline_curve_with_knots():
         return None
 
     def gen_nodes(self,spacing:float):
-        #   Initially overpopulates points on spline to calculate length and coursen.
-        #   Numpy wil generate points with a density dependant on the knot and control point
-        #   density. Hence if CAD outputs an irregular spline, numpy will generate irregular nodes.
         N_initial=int(self.ctrl_pts.shape[0]*30)
 
         spline_range_initial=np.linspace(
@@ -304,6 +407,111 @@ class B_spline_curve_with_knots():
 
         return nodes
 
+class Edge_curve():
+    def __init__(self,raw_data):
+        properties=raw_data['properties'].split(',')
+
+        self.id                 =   int(raw_data['id'][1:])
+        self.name               =   properties[0][1:-1]
+        self.start_coords       =   None
+        self.end_coords         =   None
+        self.edge_geom          =   None
+
+        self.start_vertex_id    =   int(properties[1][1:])
+        self.end_vertex_id      =   int(properties[2][1:])
+        self.edge_geom_id       =   int(properties[3][1:])
+
+        if self.name=="":
+            self.name=None
+
+    def fill_data(self,geom_dict):
+        self.start_coords   =   geom_dict[self.start_vertex_id].coords
+        self.end_coords     =   geom_dict[self.end_vertex_id].coords
+        self.edge_geom      =   geom_dict[self.edge_geom_id]
+
+        return None
+
+class Oriented_edge():
+    def __init__(self,raw_data):
+        properties=raw_data['properties'].split(',')
+        str_to_bool=lambda x:True if (x=="T") else False
+
+        self.id             =   int(raw_data['id'][1:])
+        self.name           =   properties[0][1:-1]
+        self.orientation    =   str_to_bool(properties[4][1:-1])
+        self.edge_curve     =   None
+
+        self.edge_curve_id  =   int(properties[3][1:])
+
+        if self.name=="":
+            self.name=None
+
+    def fill_data(self,geom_dict):
+        self.edge_curve =   geom_dict[self.edge_curve_id]
+
+        return None
+
+class Edge_loop():
+    def __init__(self,raw_data:pd.Series):
+        properties=raw_data['properties']
+        edges=properties[properties.find("(")+1:properties.find(")")].split(',')
+
+        self.id         =   int(raw_data['id'][1:])
+        self.name       =   properties[0][1:-1]
+        self.edges      =   None
+
+        self.edge_ids  =   [int(x[1:]) for x in edges]
+
+        if self.name=="":
+            self.name=None
+
+    def fill_data(self,geom_dict):
+        self.edges =   [geom_dict[i] for i in self.edge_ids]
+        
+        return None
+
+class Face_bound():
+    def __init__(self,raw_data,outer):
+        properties=raw_data['properties'].split(',')
+        str_to_bool=lambda x:True if (x=="T") else False
+
+        self.id             =   int(raw_data['id'][1:])
+        self.name           =   properties[0][1:-1]
+        self.bound          =   None
+        self.orientation    =   str_to_bool(properties[1][1:-1])
+        self.outer          =   outer
+
+        self.bound_id       =   int(properties[1][1:])
+
+        if self.name=="":
+            self.name=None
+
+    def fill_data(self,geom_dict):
+        self.bound  =   geom_dict[self.bound_id]
+
+        return None
+
+class Advanced_face():
+    def __init__(self,raw_data):
+        properties=[i.strip() for i in re.split(r',(?![^\(]*[\)])', raw_data['properties'])]
+
+        self.id         =   int(raw_data['id'][1:])
+        self.name       =   properties[0][1:-1]
+        self.bounds     =   None
+        self.plane      =   None
+        
+        self.bound_ids   =   [int(x[1:]) for x in properties[1][1:-1].split(',')]
+        self.plane_id   =   int(properties[2][1:])
+
+        if self.name=="":
+            self.name=None
+
+    def fill_data(self,geom_dict):
+        self.bounds =   [geom_dict[i] for i in self.bound_ids]
+        self.plane  =   geom_dict[self.plane_id]
+
+        return None
+
 def Step_read(file:str,csv=False)->pd.Series:
     """
     Reads .STEP (or .stp) file.
@@ -348,7 +556,7 @@ def Step_read(file:str,csv=False)->pd.Series:
         data=data.append({'id':id,'tag':tag,'properties':properties},ignore_index=True)
 
     data.dropna(axis=0,inplace=True)    #   removes blank entries
-    data=data[data['tag'].isin(DATA_HIERARCHY)]  #   removes entries that contain waffle data
+    #data=data[data['tag'].isin(DATA_HIERARCHY)]  #   removes entries that contain waffle data
 
     if csv==True:
         data.to_csv('data.csv')
@@ -367,25 +575,42 @@ def Data_sort(geom_data:pd.Series)->dict:
     for index,row in geom_data.iterrows():
         if row['tag']=='CARTESIAN_POINT':
             x=Cartesian_point(row)
-            geom_dict[x.id]=x
+        elif row['tag']=='VERTEX_POINT':
+            x=Vertex_point(row)
         elif row['tag']=='DIRECTION':
             x=Direction(row)
-            geom_dict[x.id]=x
+        elif row['tag']=='VECTOR':
+            x=Vector(row)
+        elif row['tag']=='LINE':
+            x=Line(row)
         elif row['tag']=='AXIS2_PLACEMENT_3D':
             x=Axis2_placement_3d(row)
-            geom_dict[x.id]=x
+        elif row['tag']=='PLANE':
+            x=Plane(row)
         elif row['tag']=='CIRCLE':
             x=Circle(row)
-            geom_dict[x.id]=x
         elif row['tag']=='TRIMMED_CURVE':
             x=Trimmed_curve(row)
-            geom_dict[x.id]=x
         elif row['tag']=='POLYLINE':
             x=Polyline(row)
-            geom_dict[x.id]=x
         elif row['tag']=='B_SPLINE_CURVE_WITH_KNOTS':
             x=B_spline_curve_with_knots(row)
-            geom_dict[x.id]=x
+        elif row['tag']=='EDGE_CURVE':
+            x=Edge_curve(row)
+        elif row['tag']=='ORIENTED_EDGE':
+            x=Oriented_edge(row)
+        elif row['tag']=='EDGE_LOOP':
+            x=Edge_loop(row)
+        elif row['tag']=='FACE_BOUND':
+            x=Face_bound(row,outer=False)
+        elif row['tag']=='FACE_OUTER_BOUND':
+            x=Face_bound(row,outer=True)
+        elif row['tag']=='ADVANCED_FACE':
+            x=Advanced_face(row)
+        else:
+            continue
+
+        geom_dict[x.id]=x
     
     #   Now all geom_dictetry objects are defined, each object is completed by following ID links 
     #   and filing in data.
@@ -400,7 +625,7 @@ def Data_sort(geom_data:pd.Series)->dict:
     return geom_dict
 
 if __name__=="__main__":
-    geom_raw=Step_read('spline_interpolation2.stp',csv=True)
+    geom_raw=Step_read('NACA0012H.stp',csv=True)
     geom_dict=Data_sort(geom_raw)
 
-    Plot_geom(geom_dict,cartesian_points=True,polylines=False,circles=True)
+    Plot_geom(geom_dict,cartesian_points=True,polylines=True,circles=True)

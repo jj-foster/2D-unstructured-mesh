@@ -204,18 +204,22 @@ class Trimmed_curve():
 
 class Polyline():
     """3D line connecting 2 cartesian points."""
-    def __init__(self,raw_data:pd.Series):
-        properties=raw_data['properties']
-        points=properties[properties.find("(")+1:properties.find(")")].split(',')
+    def __init__(self,raw_data:pd.Series=None,points:np.ndarray=None):
+        if raw_data!=None:
+            properties=raw_data['properties']
+            points=properties[properties.find("(")+1:properties.find(")")].split(',')
 
-        self.id         =   int(raw_data['id'][1:])
-        self.name       =   properties.split(',')[0][1:-1]
-        self.points     =   None    #   in form [[x0,y0,z0],[x1,y1,z1]]
+            self.id         =   int(raw_data['id'][1:])
+            self.name       =   properties.split(',')[0][1:-1]
+            self.points     =   None    #   in form [[x0,y0,z0],[x1,y1,z1]]
 
-        self.points_id  =   [int(x[1:]) for x in points]
+            self.points_id  =   [int(x[1:]) for x in points]
 
-        if self.name=="":
-            self.name=None
+            if self.name=="":
+                self.name=None
+            
+        else:
+            self.points=points  #   in form [[x0,y0,z0],[x1,y1,z1]]
 
     def fill_data(self,geom_dict):
         self.points =   [geom_dict[self.points_id[0]].coords,
@@ -470,6 +474,32 @@ class Edge_loop():
         
         return None
 
+    def gen_nodes(self,spacing:float)->np.ndarray:
+        nodes=[]
+
+        for edge in self.edges:
+            curve=edge.edge_curve
+            start=curve.start_coords
+            end=curve.end_coords
+            geom=curve.edge_geom
+            
+            if type(geom)==Line:
+                polyline=Polyline(points=[start,end])
+                nodes.append(polyline.gen_nodes(spacing))
+            else:
+                nodes.append(geom.gen_nodes(spacing))
+
+        nodes=np.array([node for edge in nodes for node in edge])
+
+        #   removoe duplicate nodes
+        nodes_=[]
+        for node in nodes:
+            if (list(node) in nodes_)==False:
+                nodes_.append(list(node))
+        nodes_=np.array(nodes_)
+
+        return nodes_
+
 class Face_bound():
     def __init__(self,raw_data,outer):
         properties=raw_data['properties'].split(',')
@@ -481,13 +511,13 @@ class Face_bound():
         self.orientation    =   str_to_bool(properties[1][1:-1])
         self.outer          =   outer
 
-        self.bound_id       =   int(properties[1][1:])
+        self.edge_loop_id       =   int(properties[1][1:])
 
         if self.name=="":
             self.name=None
 
     def fill_data(self,geom_dict):
-        self.bound  =   geom_dict[self.bound_id]
+        self.edge_loop  =   geom_dict[self.edge_loop_id]
 
         return None
 
@@ -592,7 +622,7 @@ def Data_sort(geom_data:pd.Series)->dict:
         elif row['tag']=='TRIMMED_CURVE':
             x=Trimmed_curve(row)
         elif row['tag']=='POLYLINE':
-            x=Polyline(row)
+            x=Polyline(raw_data=row)
         elif row['tag']=='B_SPLINE_CURVE_WITH_KNOTS':
             x=B_spline_curve_with_knots(row)
         elif row['tag']=='EDGE_CURVE':
@@ -625,7 +655,7 @@ def Data_sort(geom_data:pd.Series)->dict:
     return geom_dict
 
 if __name__=="__main__":
-    geom_raw=Step_read('NACA0012H.stp',csv=True)
+    geom_raw=Step_read('square_donut2.stp',csv=True)
     geom_dict=Data_sort(geom_raw)
 
     Plot_geom(geom_dict,cartesian_points=True,polylines=True,circles=True)

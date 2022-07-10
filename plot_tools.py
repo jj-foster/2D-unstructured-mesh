@@ -16,7 +16,7 @@ def Plot_cartesian_points(points:list,ax=None)->plt:
             points_.append(point)
     points=points_
     """
-    
+
     x=[point.coords[0] for point in points]
     y=[point.coords[1] for point in points]
     z=[point.coords[2] for point in points]
@@ -71,6 +71,7 @@ def Plot_bspline(bsplines:list,ax=None)->plt:
     return plt
 
 def Plot_lines(lines:list,ax=None)->plt:
+    #   a bit annoying to plot... unfinished.
     if ax==None:
         fig=plt.figure()
         ax=plt.axes(projection='3d')

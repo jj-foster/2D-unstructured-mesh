@@ -110,9 +110,9 @@ def Plot_geom(geom_dict:dict,cartesian_points:bool=True,
     ax.set_aspect('equal')
 
     #plt.tight_layout()
-    plt.show()
+    plt.ax()
 
-def Plot_nodes_3d(nodes:list):
+def Plot_nodes_3d(nodes:list,label=False,ax=None):
     x,y,z=nodes.T
 
     #   basically if in one plane
@@ -129,26 +129,59 @@ def Plot_nodes_3d(nodes:list):
     else:
         z_aspect=0.0000001
 
-    fig=plt.figure()
-    ax=plt.axes(projection='3d')
+    if ax==None:
+        fig=plt.figure()
+        ax=plt.axes(projection='3d')
 
     ax.scatter(x,y,z,s=5)
+
+    if label==True:
+        for i,node in enumerate(nodes):
+            ax.text(node[0],node[1],node[2],s=i)
+
     ax.set_box_aspect((x_aspect,y_aspect,z_aspect))
     plt.tight_layout()
-    plt.show()
 
-    return None
+    if ax==None:
+        plt.ax()
+        pass
+    else:
+        return plt
 
-def Plot_nodes_2d(nodes:np.ndarray):
+def Plot_nodes_2d(nodes:np.ndarray,label=False,ax=None):
     x,y,z=nodes.T
 
-    fig=plt.figure()
-    ax=plt.axes()
+    if ax==None:
+        fig=plt.figure()
+        ax=plt.axes(projection='2d')
 
     ax.scatter(x,y,s=5)
 
+    if label==True:
+        for i,node in enumerate(nodes):
+            ax.text(node[0],node[1],s=i)
+
     ax.set_aspect('equal')
     plt.tight_layout()
-    plt.show()
 
-    return None
+    if ax==None:
+        plt.ax()
+        pass
+    else:
+        return plt
+
+def Plot_edges(edges,projection,label=True):
+    if projection=='2d':  
+        ax=plt.axes()
+    elif projection=='3d':
+        ax=plt.axes(projection='3d')
+
+    for edge in edges:
+        nodes=edge.nodes
+
+        if projection=='2d':  
+            Plot_nodes_2d(nodes,label=label,ax=ax)
+        elif projection=='3d':
+            Plot_nodes_3d(nodes,label=label,ax=ax)
+
+    plt.show()

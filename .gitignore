@@ -1,17 +1,10 @@
-/data.csv
-/STEP Data.png
-/TODO.txt
 /__pycache__
-/NACA0012H.stp
-/NACA0012H_surface.stp
-/circle.stp
-/polyline2.stp
-/spline.stp
-/2D_arc.stp
-/tube_keel.stp
-/cylinder.stp
+/data.csv
 /mesh types.png
 /meshing.txt
+/NACA0012H.stp
+/spline.stp
 /square_donut.stp
-/surface_split.stp
 /square_donut2.stp
+/STEP Data.png
+/TODO.txt

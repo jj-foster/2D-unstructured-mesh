@@ -236,6 +236,7 @@ class Polyline():
         for i,node in enumerate(nodes):
             t=i/(N-1)
             nodes[i]=self.points[0]+t*vector
+        nodes[-1]=self.points[1]    #   corrects for floating point error
 
         return nodes
 
@@ -291,7 +292,7 @@ class Circle():
         theta_=np.arccos(np.dot(CE,CS)/(np.linalg.norm(CS)*np.linalg.norm(CE)))
         if np.dot(v2_,CE)<=0:
             theta_=2*np.pi-theta_
-        
+
         length=self.radius*(theta_)
         #   fix for tube_keel.stp - check which circles are missing
         if np.isnan(length):
@@ -309,6 +310,10 @@ class Circle():
         nodes=np.zeros([N,3])
         for i,theta in enumerate(thetas):
             nodes[i]=self.centre+self.radius*(np.cos(theta)*v1_+np.sin(theta)*v2_)
+        
+        #   corrects for floating point error with start/end nodes
+        if theta_==2*np.pi:
+            nodes[-1]=nodes[0]
 
         return nodes
 
@@ -475,13 +480,42 @@ class Edge_loop():
         return None
 
     def gen_nodes(self,spacing:float)->np.ndarray:
-        nodes=[]
+        
+        def find_next_edge(current_edge,edges):
+            end=current_edge.edge_curve.end_coords
 
-        for edge in self.edges:
+            for edge in edges:
+                start=edge.edge_curve.start_coords
+                if list(start)==list(end):
+                    return edge
+
+        #   Reorder edges so that they are head to tail.
+        """
+        list of edges
+        start with first edge
+        find edge with start coords that match previous edge end coords
+        add edge to new list of edges
+        """
+        reordered=[self.edges[0]]       #   list grows
+        unordered=self.edges
+        unordered.remove(unordered[0])  #   list shrinks
+
+        for i in range(len(self.edges)):
+            current_edge=reordered[i]
+            next_edge=find_next_edge(current_edge,unordered)
+
+            reordered.append(next_edge)
+            unordered.remove(next_edge)
+
+        #   Generate nodes for each edge
+        nodes=[]
+        for edge in reordered:
             curve=edge.edge_curve
             start=curve.start_coords
             end=curve.end_coords
             geom=curve.edge_geom
+
+            #print(start,end)
             
             if type(geom)==Line:
                 polyline=Polyline(points=[start,end])
@@ -496,6 +530,9 @@ class Edge_loop():
         for node in nodes:
             if (list(node) in nodes_)==False:
                 nodes_.append(list(node))
+
+        #   add back in duplicate start/end node
+        nodes_.append(nodes_[0])
         nodes_=np.array(nodes_)
 
         return nodes_

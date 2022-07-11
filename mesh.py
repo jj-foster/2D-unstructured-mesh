@@ -60,6 +60,20 @@ class Mesh():
         return edges
 
     def Advancing_front(self,spacing:float,layers:int):
+        """
+        Edge object defining edge nodes
+            - update next iteration with each tri panel generation
+            - with each loop new edge object is used
+
+        node variable containing nodes from all edges
+        loop through edges:
+            identify optimal node placement
+            check radius for other nodes
+            create tri panel object
+            add new edges to next edge object
+
+        need to figure out creating new edges - some sort of loop check?
+        """
         r=spacing*0.75
 
         for edge in self.edges:
@@ -68,13 +82,20 @@ class Mesh():
             orientation=edge.orientation
 
             i=0
-            while i<len(nodes)-1:
+            for i in range(len(nodes)-1):
                 A=nodes[i]
                 B=nodes[i+1]
                 AB=B-A
+                # Unit vectors in directrion between nodes & perpendicular
+                # i.e. for ideal isoseles triangle
                 x=AB/np.linalg.norm(AB)
                 y=np.cross(x,edge.v2)
-                if orientation==False:   #   generate panels outside instead of inside
+
+                #   Generate panels outside instead of inside:
+                #   clockwise+false=inside
+                #   clockwise+true=outside
+                #   anticlockwise+true=inside
+                if orientation==False:
                     y=-y
 
                 dx=spacing
@@ -83,14 +104,12 @@ class Mesh():
 
                 nodes_=np.append(nodes_,[C],axis=0)
 
-                i+=1
-            
             edge.nodes=nodes_
 
         return nodes_
 
 if __name__=="__main__":
-    mesh=Mesh(file='NACA0012H.stp',spacing=30,edge_layers=1)
-    #mesh=Mesh(file='square_donut.stp',spacing=4,edge_layers=1)
+    #mesh=Mesh(file='NACA0012H.stp',spacing=30,edge_layers=1)
+    mesh=Mesh(file='square_donut.stp',spacing=1,edge_layers=1)
     
     Plot_edges(mesh.edges,projection='2d',label=True)

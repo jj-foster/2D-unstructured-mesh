@@ -1,4 +1,4 @@
-from matplotlib import lines, pyplot as plt
+from matplotlib import pyplot as plt
 import numpy as np
 
 def Plot_cartesian_points(points:list,ax=None)->plt:
@@ -70,16 +70,6 @@ def Plot_bspline(bsplines:list,ax=None)->plt:
 
     return plt
 
-def Plot_lines(lines:list,ax=None)->plt:
-    #   a bit annoying to plot... unfinished.
-    if ax==None:
-        fig=plt.figure()
-        ax=plt.axes(projection='3d')
-    
-
-
-    return plt
-
 def Plot_geom(geom_dict:dict,cartesian_points:bool=True,
                    polylines:bool=True,circles:bool=True,
                    bsplines:bool=True,lines=True):
@@ -101,8 +91,6 @@ def Plot_geom(geom_dict:dict,cartesian_points:bool=True,
         circle_plt=Plot_circles(circles_,ax)
     if bsplines==True:
         bspline_plt=Plot_bspline(bsplines_,ax)
-    if lines==True:
-        lines_plt=Plot_lines(lines_,ax)
 
     ax.set_xlabel('x')
     ax.set_ylabel('y')
@@ -112,7 +100,7 @@ def Plot_geom(geom_dict:dict,cartesian_points:bool=True,
     #plt.tight_layout()
     plt.ax()
 
-def Plot_nodes_3d(nodes:list,label=False,ax=None):
+def Plot_nodes_3d(nodes:list,labels=False,ax=None,line=False):
     x,y,z=nodes.T
 
     #   basically if in one plane
@@ -131,58 +119,96 @@ def Plot_nodes_3d(nodes:list,label=False,ax=None):
 
     if ax==None:
         fig=plt.figure()
-        ax=plt.axes(projection='3d')
+        ax_=plt.axes(projection='3d')
+    else:
+        ax_=ax
 
-    ax.scatter(x,y,z,s=5)
+    if line==False:
+        ax_.scatter(x,y,z,s=5)
+    else:
+        ax_.plot(x,y,'o-')
 
-    if label==True:
+    if labels==True:
         for i,node in enumerate(nodes):
-            ax.text(node[0],node[1],node[2],s=i)
+            ax_.text(node[0],node[1],node[2],s=i)
 
-    ax.set_box_aspect((x_aspect,y_aspect,z_aspect))
+    ax_.set_box_aspect((x_aspect,y_aspect,z_aspect))
     plt.tight_layout()
 
     if ax==None:
-        plt.ax()
+        plt.show()
         pass
     else:
         return plt
 
-def Plot_nodes_2d(nodes:np.ndarray,label=False,ax=None):
+def Plot_nodes_2d(nodes:np.ndarray,labels=False,ax=None,line=False):
     x,y,z=nodes.T
 
     if ax==None:
         fig=plt.figure()
-        ax=plt.axes(projection='2d')
+        ax_=plt.axes()
+    else:
+        ax_=ax
 
-    ax.scatter(x,y,s=5)
+    if line==False:
+        ax_.scatter(x,y,s=5)
+    else:
+        ax_.plot(x,y,'o-')
 
-    if label==True:
+    if labels==True:
         for i,node in enumerate(nodes):
-            ax.text(node[0],node[1],s=i)
+            ax_.text(node[0],node[1],s=i)
 
-    ax.set_aspect('equal')
+    ax_.set_aspect('equal')
     plt.tight_layout()
 
     if ax==None:
-        plt.ax()
+        plt.show()
         pass
     else:
         return plt
 
-def Plot_edges(edges,projection,label=True):
+def Plot_edges(edges,projection,labels=True,line=False,ax=None):
+    if ax==None:
+        fig=plt.figure()
+        ax_=plt.axes()
+    else:
+        ax_=ax
+
     if projection=='2d':  
-        ax=plt.axes()
-        ax.set_aspect('equal')
+        ax_.set_aspect('equal')
     elif projection=='3d':
-        ax=plt.axes(projection='3d')
+        ax_=plt.axes(projection='3d')
 
     for edge in edges:
         nodes=edge.nodes
 
         if projection=='2d':  
-            Plot_nodes_2d(nodes,label=label,ax=ax)
+            fig=Plot_nodes_2d(nodes,labels=labels,ax=ax_,line=line)
         elif projection=='3d':
-            Plot_nodes_3d(nodes,label=label,ax=ax)
+            fig=Plot_nodes_3d(nodes,labels=labels,ax=ax_,line=line)
 
-    plt.show()
+    if ax==None:
+        plt.show()
+        pass
+    else:
+        return fig
+
+def Plot_panels(panels,ax=None):
+    if ax==None:
+        fig=plt.figure()
+        ax_=plt.axes()
+    else:
+        ax_=ax
+
+    for panel in panels:
+        x,y,z=panel.points.T
+
+        if panel.D==None:
+            ax_.plot(x,y,'o-')
+
+    if ax==None:
+        plt.show()
+        pass
+    else:
+        return plt

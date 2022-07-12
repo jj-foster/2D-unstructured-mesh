@@ -620,7 +620,7 @@ def Step_read(file:str,csv=False)->pd.Series:
             tag=None
         properties=str_[1][str_[1].find('(')+1:str_[1].find(');')]
         
-        data=data.append({'id':id,'tag':tag,'properties':properties},ignore_index=True)
+        data=pd.concat([data,pd.DataFrame.from_records([{'id':id,'tag':tag,'properties':properties}])],ignore_index=True)
 
     data.dropna(axis=0,inplace=True)    #   removes blank entries
     #data=data[data['tag'].isin(DATA_HIERARCHY)]  #   removes entries that contain waffle data

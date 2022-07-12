@@ -3,7 +3,7 @@ Bounding nodes generated within respective class
 Domain nodes generated here
 Mesh generation handled here.
 """
-from click import FileError
+
 import numpy as np
 from os import system
 from matplotlib import pyplot as plt
@@ -110,6 +110,6 @@ class Mesh():
 
 if __name__=="__main__":
     #mesh=Mesh(file='NACA0012H.stp',spacing=30,edge_layers=1)
-    mesh=Mesh(file='square_donut.stp',spacing=1,edge_layers=1)
+    mesh=Mesh(file='square_loop.stp',spacing=7,edge_layers=1)
     
     Plot_edges(mesh.edges,projection='2d',label=True)

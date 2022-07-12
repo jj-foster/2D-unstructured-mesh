@@ -173,6 +173,7 @@ def Plot_nodes_2d(nodes:np.ndarray,label=False,ax=None):
 def Plot_edges(edges,projection,label=True):
     if projection=='2d':  
         ax=plt.axes()
+        ax.set_aspect('equal')
     elif projection=='3d':
         ax=plt.axes(projection='3d')
 

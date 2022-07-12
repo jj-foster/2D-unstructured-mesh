@@ -4,6 +4,7 @@ Domain nodes generated here
 Mesh generation handled here.
 """
 
+from os import system
 import numpy as np
 from matplotlib import pyplot as plt
 
@@ -27,6 +28,7 @@ class Panel():
 
 class Edge():
     def __init__(self,nodes,orientation:bool,axis):
+        assert type(nodes)==np.ndarray, "nodes must of type <class 'numpy.ndarray'>"
         self.nodes=nodes
         self.orientation=orientation
 
@@ -43,7 +45,7 @@ class Mesh():
         return None
         
     def Read(self,file:str)->list:
-        geom_raw=Step_read(file,csv=True)
+        geom_raw=Step_read(file,csv=False)
         geom_dict=Data_sort(geom_raw)
 
         #Plot_geom(geom_dict)
@@ -86,15 +88,18 @@ class Mesh():
 
         need to figure out creating new edges - some sort of loop check?
         """
-        r=spacing*0.5
+        r=0.4*spacing
 
         edges=self.edges
         nodes=[node for edge in edges for node in edge.nodes]
         panels=[]
         
         i=0
-        while i<1: 
+        while i<4: 
+            ax=plt.axes()
+            Plot_edges(edges,projection='2d',line=True,ax=ax)
             for edge in edges:
+
                 edge_nodes=edge.nodes   #   nodes on current edge
                 orientation=edge.orientation
                 
@@ -132,34 +137,35 @@ class Mesh():
 
                     if near_nodes!={}:  
                         C=near_nodes[min(near_nodes.keys())]    #   Selects closets node
-
-                        #
-                        AC_mod=np.linalg.norm(C-A)
-                        BC_mod=np.linalg.norm(C-B)
-                        if AC_mod>=BC_mod:
+    
+                    AC_mod=np.linalg.norm(C-A)
+                    BC_mod=np.linalg.norm(C-B)
+                    if AC_mod<=BC_mod:
+                        if (list(A) in np.array(new_edge_nodes).tolist())==False:
                             new_edge_nodes.append(A)
                             nodes.append(A)
-                        else:
+                        if (list(C) in np.array(new_edge_nodes).tolist())==False:
+                            new_edge_nodes.append(C)
+                            nodes.append(C)
+                    else:
+                        if (list(C) in np.array(new_edge_nodes).tolist())==False:
+                            new_edge_nodes.append(C)
+                            nodes.append(C)
+                        if (list(B) in np.array(new_edge_nodes).tolist())==False:
                             new_edge_nodes.append(B)
                             nodes.append(B) 
-                    else:
-                        new_edge_nodes.append(A)
-                        nodes.append(A) 
-
-                    new_edge_nodes.append(C)
-                    nodes.append(C)
 
                     panels.append(Panel(A,C,B))
                 #end for
 
                 edge.nodes=np.array(new_edge_nodes)
-                edge.nodes=Remove_duplicate_nodes(edge.nodes)
+                #edge.nodes=Remove_duplicate_nodes(edge.nodes)
                 edge.nodes=np.append(edge.nodes,[edge.nodes[0]],axis=0)    #   close edge loop
 
             #end for
 
-            Plot_edges(edges,projection='2d',line=True)
-
+            Plot_edges(edges,projection='2d',line=True,ax=ax)
+            plt.show()
             i+=1
         #end while
 
@@ -168,8 +174,9 @@ class Mesh():
         return nodes, panels
 
 if __name__=="__main__":
+    system('cls')
     #mesh=Mesh(file='NACA0012H.stp',spacing=30,edge_layers=1)
-    mesh=Mesh(file='square_loop.stp',spacing=3,edge_layers=1)
+    mesh=Mesh(file='circle.stp',spacing=4,edge_layers=1)
     
     #Plot_nodes_2d(mesh.nodes,labels=True)
     #Plot_panels(mesh.panels)

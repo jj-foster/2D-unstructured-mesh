@@ -525,17 +525,13 @@ class Edge_loop():
 
         nodes=np.array([node for edge in nodes for node in edge])
 
-        #   removoe duplicate nodes
-        nodes_=[]
-        for node in nodes:
-            if (list(node) in nodes_)==False:
-                nodes_.append(list(node))
+        nodes=Remove_duplicate_nodes(nodes)
 
         #   add back in duplicate start/end node
-        nodes_.append(nodes_[0])
-        nodes_=np.array(nodes_)
+        nodes=np.append(nodes,[nodes[0]],axis=0)
+        nodes=np.array(nodes)
 
-        return nodes_
+        return nodes
 
 class Face_bound():
     def __init__(self,raw_data,outer):

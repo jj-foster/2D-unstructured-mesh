@@ -100,7 +100,7 @@ def Plot_geom(geom_dict:dict,cartesian_points:bool=True,
     #plt.tight_layout()
     plt.ax()
 
-def Plot_nodes_3d(nodes:list,labels=False,ax=None,line=False):
+def Plot_nodes_3d(nodes:np.ndarray,labels=False,ax=None,line=False):
     x,y,z=nodes.T
 
     #   basically if in one plane
@@ -206,7 +206,9 @@ def Plot_panels(panels,ax=None):
 
         if panel.D==None:
             ax_.plot(x,y,'o-')
-
+    
+    ax_.set_aspect('equal')
+    
     if ax==None:
         plt.show()
         pass

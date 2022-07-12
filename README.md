@@ -1,5 +1,5 @@
 ## TODO:
-
+```
 DONE 1. Fill trimmed_curve data
 DONE 2. Change obj list to dict with ID as tag
 DONE 3. Add parent/child relation to trimmed_curve & circle
@@ -16,8 +16,9 @@ DONE 8. generate nodes based on edge loops rather than geometry
 10. mesh smoothing
 11. quad dominant mesh
 12. fully quad mesh
-
+```
 ## STEP Datastructure:
+```
 ADVANCED_FACE
     PLANE
     FACE_OUTER_BOUND+FACE_BOUND
@@ -32,3 +33,4 @@ geometry object:
     POLYLINE
     CIRCLE
     BSPLINE
+```

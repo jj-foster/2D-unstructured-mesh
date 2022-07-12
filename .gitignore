@@ -1,4 +1,6 @@
 /__pycache__
+/.vscode
+/.mypy_cache
 /data.csv
 /mesh types.png
 /meshing.txt

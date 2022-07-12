@@ -691,6 +691,14 @@ def Data_sort(geom_data:pd.Series)->dict:
 
     return geom_dict
 
+def Remove_duplicate_nodes(nodes:np.ndarray):
+    nodes_=[]
+    for node in nodes:
+        if (list(node) in nodes_)==False:
+            nodes_.append(list(node))
+
+    return np.array(nodes_)
+
 if __name__=="__main__":
     geom_raw=Step_read('square_donut2.stp',csv=True)
     geom_dict=Data_sort(geom_raw)

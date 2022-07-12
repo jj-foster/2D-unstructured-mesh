@@ -69,6 +69,27 @@ class Mesh():
 
         return edges
 
+    def find_near_nodes(self,centre_node:np.array,nodes:np.array,r:float,in_direction=None)->dict:
+        near_nodes={}
+        for node in nodes:
+            x,y,z=node[0],node[1],node[2]
+            x_p,y_p,z_p=centre_node[0],centre_node[1],centre_node[2]
+
+            if x_p-r<=x<=x_p+r and y_p-r<=y<=y_p+r and z_p-r<=z<=z_p+r:
+                distance=np.linalg.norm(node-centre_node)
+
+                if distance!=0:
+
+                    if type(in_direction)==np.ndarray:  #   only nodes in same direction as given vector
+                        vector=node-centre_node
+
+                        if np.dot(vector,in_direction)<0:
+                            near_nodes[distance]=node
+                    else:
+                        near_nodes[distance]=node
+
+        return near_nodes
+
     def advancing_front(self,spacing:float,layers:int):
         """
         Edge object defining edge nodes
@@ -88,26 +109,25 @@ class Mesh():
 
         need to figure out creating new edges - some sort of loop check?
         """
-        r=0.4*spacing
 
         edges=self.edges
         nodes=[node for edge in edges for node in edge.nodes]
         panels=[]
         
         i=0
-        while i<4: 
+        while i<5: 
             ax=plt.axes()
             Plot_edges(edges,projection='2d',line=True,ax=ax)
             for edge in edges:
 
-                edge_nodes=edge.nodes   #   nodes on current edge
+                front_nodes=edge.nodes   #   nodes on current edge
                 orientation=edge.orientation
                 
-                new_edge_nodes=[]
-                for j in range(len(edge_nodes)-1):
+                new_front_nodes=[]
+                for j in range(len(front_nodes)-1):
                     ####    Identify optimal node placement     ####
-                    A=edge_nodes[j]
-                    B=edge_nodes[j+1]
+                    A=front_nodes[j]
+                    B=front_nodes[j+1]
                     AB=B-A
                     # Unit vectors in directrion between nodes & perpendicular
                     # i.e. for ideal isoseles triangle
@@ -117,48 +137,46 @@ class Mesh():
                     if orientation==False:  #   Generate panels outside instead of inside:
                         y=-y
 
-                    dx=spacing
-                    dy=np.sqrt(dx**2-(dx/2)**2)
+                    dx=np.linalg.norm(AB)
+                    dy=np.sqrt(spacing**2-(spacing/2)**2)
                     C=A+x*dx/2+y*dy
 
                     ####    Check radius for other nodes    ####
-                    near_nodes={}
-                    for node in nodes:
-                        x=node[0]
-                        y=node[1]
-                        z=node[2]
-                        x_p=C[0]
-                        y_p=C[1]
-                        z_p=C[2]
+                    r=0.5*dx
 
-                        if x_p-r<=x<=x_p+r and y_p-r<=y<=y_p+r and z_p-r<=z<=z_p+r:
-                            distance=np.linalg.norm(node-C)
-                            near_nodes[distance]=node
+                    near_A=self.find_near_nodes(A,front_nodes,r,in_direction=x)
+                    near_B=self.find_near_nodes(B,front_nodes,r,in_direction=x)
+                    near_nodes=dict(list(near_A.items())+list(near_B.items()))
 
+                    if near_nodes=={}: 
+                        r=0.5*spacing
+                        near_nodes=self.find_near_nodes(C,front_nodes,r)
+                    
                     if near_nodes!={}:  
                         C=near_nodes[min(near_nodes.keys())]    #   Selects closets node
-    
+
+                    ####    Adds nodes to front and global node list    ####
                     AC_mod=np.linalg.norm(C-A)
                     BC_mod=np.linalg.norm(C-B)
-                    if AC_mod<=BC_mod:
-                        if (list(A) in np.array(new_edge_nodes).tolist())==False:
-                            new_edge_nodes.append(A)
+                    if AC_mod<BC_mod or np.isclose(AC_mod,BC_mod,rtol=1e-5):
+                        if (list(A) in np.array(new_front_nodes).tolist())==False:
+                            new_front_nodes.append(A)
                             nodes.append(A)
-                        if (list(C) in np.array(new_edge_nodes).tolist())==False:
-                            new_edge_nodes.append(C)
+                        if (list(C) in np.array(new_front_nodes).tolist())==False:
+                            new_front_nodes.append(C)
                             nodes.append(C)
                     else:
-                        if (list(C) in np.array(new_edge_nodes).tolist())==False:
-                            new_edge_nodes.append(C)
+                        if (list(C) in np.array(new_front_nodes).tolist())==False:
+                            new_front_nodes.append(C)
                             nodes.append(C)
-                        if (list(B) in np.array(new_edge_nodes).tolist())==False:
-                            new_edge_nodes.append(B)
+                        if (list(B) in np.array(new_front_nodes).tolist())==False:
+                            new_front_nodes.append(B)
                             nodes.append(B) 
 
                     panels.append(Panel(A,C,B))
                 #end for
 
-                edge.nodes=np.array(new_edge_nodes)
+                edge.nodes=np.array(new_front_nodes)
                 #edge.nodes=Remove_duplicate_nodes(edge.nodes)
                 edge.nodes=np.append(edge.nodes,[edge.nodes[0]],axis=0)    #   close edge loop
 
@@ -176,7 +194,6 @@ class Mesh():
 if __name__=="__main__":
     system('cls')
     #mesh=Mesh(file='NACA0012H.stp',spacing=30,edge_layers=1)
-    mesh=Mesh(file='circle.stp',spacing=4,edge_layers=1)
+    mesh=Mesh(file='square_loop.stp',spacing=4,edge_layers=1)
     
-    #Plot_nodes_2d(mesh.nodes,labels=True)
-    #Plot_panels(mesh.panels)
+    Plot_panels(mesh.panels)

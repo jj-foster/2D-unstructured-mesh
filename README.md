@@ -10,8 +10,7 @@ DONE 5. Add B-splines
 DONE 6. Move plotting to new file
 DONE 7. Generate nodes on lines - within geom type class
 DONE 8. generate nodes based on edge loops rather than geometry
-9. edge nodes advancing front
-    combine edge node lists
+9. Advancing front panel/node generation
 
 10. mesh smoothing
 11. quad dominant mesh

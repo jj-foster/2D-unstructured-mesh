@@ -101,8 +101,6 @@ class Mesh():
             DONE - identify optimal node placement
             DONE - check radius for other nodes
             DONE - create tri panel object
-            FIX - 2nd edge wave
-            FIX - first edge 0th element crossover
             add new edges to next edge object
 
         at end delete duplicate nodes and panels
@@ -194,6 +192,6 @@ class Mesh():
 if __name__=="__main__":
     system('cls')
     #mesh=Mesh(file='NACA0012H.stp',spacing=30,edge_layers=1)
-    mesh=Mesh(file='square_loop.stp',spacing=4,edge_layers=1)
+    mesh=Mesh(file='circle.stp',spacing=4,edge_layers=1)
     
     Plot_panels(mesh.panels)

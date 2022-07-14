@@ -168,7 +168,7 @@ def Plot_nodes_2d(nodes:np.ndarray,labels=False,ax=None,line=False):
     else:
         return plt
 
-def Plot_edges(edges,projection,labels=True,line=False,ax=None):
+def Plot_sides(sides,projection,labels=True,line=False,ax=None):
     if ax==None:
         fig=plt.figure()
         ax_=plt.axes()
@@ -180,8 +180,8 @@ def Plot_edges(edges,projection,labels=True,line=False,ax=None):
     elif projection=='3d':
         ax_=plt.axes(projection='3d')
 
-    for edge in edges:
-        nodes=edge.nodes
+    for side in sides:
+        nodes=np.array([side.A,side.B])
 
         if projection=='2d':  
             fig=Plot_nodes_2d(nodes,labels=labels,ax=ax_,line=line)

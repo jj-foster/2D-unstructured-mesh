@@ -56,7 +56,7 @@ class Front_side():
         self.length=np.linalg.norm(self.AB)
         # Unit vectors in directrion between nodes & perpendicular
         # i.e. for ideal isoseles triangle
-        self.x=self.AB/np.linalg.norm(self.AB)
+        self.x=self.AB/self.length
         self.y=np.cross(self.x,v2)
 
         if orientation==False:  #   Generate panels outside instead of inside:
@@ -142,11 +142,8 @@ class Mesh():
                 edge_loop=bound.edge_loop
                 nodes=edge_loop.gen_nodes(spacing)
 
-                for i,_ in enumerate(nodes):
-                    if i==len(nodes)-1:
-                        sides.append(Front_side(nodes[i],nodes[0],orientation,axis))
-                    else:
-                        sides.append(Front_side(nodes[i],nodes[i+1],orientation,axis))
+                for i in range(len(nodes)-1):
+                    sides.append(Front_side(nodes[i],nodes[i+1],orientation,axis))
 
         front=Front(sides)
 
@@ -190,7 +187,7 @@ class Mesh():
 
         need to figure out creating new edges - some sort of loop check?
         """
-        Plot_sides(self.front.sides,projection='2d',labels=False,lines=True)
+        Plot_sides(self.front.sides,projection='2d',labels=False,line=True)
         nodes=[]
         for side in self.front.sides:
             nodes.extend([side.A,side.B])

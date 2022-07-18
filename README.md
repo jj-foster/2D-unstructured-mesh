@@ -47,4 +47,8 @@ geometry object:
     POLYLINE
     CIRCLE
     BSPLINE
+
+geometry modifiers:
+    TRIMMED_CURVE
+        <geometry object>
 ```

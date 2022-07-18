@@ -62,6 +62,8 @@ class Front_side():
         if orientation==False:  #   Generate panels outside instead of inside:
             self.y=-self.y
 
+        return None
+
 class Front():
     def __init__(self,sides:list):
         """Dynamic front object composed of individual tri panel sides."""
@@ -72,7 +74,7 @@ class Front():
     def __call__(self,index:int)->Front_side:
         return self.sides[index]
 
-    def update(self,remove_sides:list[Front_side],add_sides:list[Front_side])->None:
+    def update(self,remove:list[Front_side],add:list[Front_side])->None:
         """
         Updates front by removing and adding tri panel sides.
 
@@ -84,8 +86,8 @@ class Front():
         --------
         None - Front is updated inplace. 
         """
-        self.sides=[side for side in self.sides if side not in remove_sides]    #   Remove inactive sides
-        self.sides.extend(add_sides)    #   Add new active sides
+        self.sides=[side for side in self.sides if side not in remove]    #   Remove inactive sides
+        self.sides.extend(add)    #   Add new active sides
 
         return None
 
@@ -171,22 +173,7 @@ class Mesh():
         return near_nodes
 
     def advancing_front(self,spacing:float):
-        """
-        Edge object defining edge nodes
-            - update next iteration with each tri panel generation
-            - with each loop new edge object is used
 
-        DONE - node variable containing nodes from all edges
-        loop through edges:
-            DONE - identify optimal node placement
-            DONE - check radius for other nodes
-            DONE - create tri panel object
-            add new edges to next edge object
-
-        at end delete duplicate nodes and panels
-
-        need to figure out creating new edges - some sort of loop check?
-        """
         Plot_sides(self.front.sides,projection='2d',labels=False,line=True)
         nodes=[]
         for side in self.front.sides:
@@ -205,7 +192,7 @@ class Mesh():
 
             A=side.A
             B=side.B
-            C=A+x*dx/2+y*dy
+            C_ideal=A+x*dx/2+y*dy
 
             """
             ####    Check radius for other nodes    ####

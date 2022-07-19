@@ -31,6 +31,17 @@ DONE 8. generate nodes based on edge loops rather than geometry
             - exclude nodes in vector opposite to orientation
     - create new tri panel
 
+Checks:
+- DONE case 1:
+    if no close nodes
+- DONE case 2:
+    if close node and no close side
+- case 3:
+    close side(s) = sides if a node = close node
+    if one node in close side(s) = current side node
+- case 4:
+    if 2 nodes in close sides = current side node
+
 ## STEP Datastructure:
 ```
 ADVANCED_FACE

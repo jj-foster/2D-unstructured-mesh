@@ -59,7 +59,6 @@ class Front_side():
         self.x=self.AB/self.length
         self.y=np.cross(self.x,self.vect_out_plane)
 
-
         if orientation==False:  #   Generate panels outside instead of inside:
             self.y=-self.y
 
@@ -77,7 +76,7 @@ class Front():
     def __call__(self,index:int)->Front_side:
         return self.sides[index]
 
-    def update(self,add:list[Front_side],remove:list[Front_side])->None:
+    def update(self,add:list,remove:list)->None:
         """
         Updates front by removing and adding tri panel sides.
 
@@ -89,7 +88,13 @@ class Front():
         --------
         None - Front is updated inplace. 
         """
-        self.sides=[side for side in self.sides if side not in remove]    #   Remove inactive sides
+        try:
+            self.sides=[side for side in self.sides if side not in remove]    #   Remove inactive sides
+        except TypeError as e:
+            print(e)
+            print(self.sides,remove)
+            exit()
+
         self.sides.extend(add)    #   Add new active sides
 
         self.nodes=self.get_nodes() #   refresh node list
@@ -159,7 +164,7 @@ class Mesh():
         """
         sides=[]
         for face in faces:
-            vect_out_plane=face.plane.axis.ref_vector
+            vect_out_plane=face.plane.axis.axis
             for bound in face.bounds:
                 orientation=bound.orientation
                 edge_loop=bound.edge_loop
@@ -185,12 +190,14 @@ class Mesh():
             
             distance=np.linalg.norm(node-centre_node)
             if distance<=r:
+                
                 if type(in_direction)==np.ndarray:  #   only nodes in same direction as given vector
                     vector=node-centre_node
                     #print(np.rad2deg(np.dot(vector,in_direction)))
                     if np.dot(vector,in_direction)>0:
                         near_nodes[distance]=node
                 else:
+                
                     near_nodes[distance]=node
 
         return near_nodes
@@ -208,15 +215,13 @@ class Mesh():
 
     def advancing_front(self,spacing:float):
 
-        #nodes=[]
-        #for side in self.front.sides:
-        #    nodes.extend([side.A,side.B])
-
         panels=[]
         
-        i=0
-        while i<1:
-            Plot_sides(self.front.sides,projection='2d',labels=False,line=True)
+        while True:
+            if self.front.sides==[]:
+                break
+
+            #Plot_sides(self.front.sides,projection='2d',labels=False,line=True)
             side=self.front(0)
 
             #   Find ideal node position.
@@ -228,6 +233,16 @@ class Mesh():
             A=side.A
             B=side.B
             C_ideal=A+x*dx/2+y*dy
+
+            ####################    DEBUGGING   ####################
+            plt.figure()
+            ax=plt.axes()
+
+            half=A+x*dx/2
+            x=np.array((np.array([A,B]),np.array([half,C_ideal])))
+            #Plot_nodes_2d(x,line=True)
+            #Plot_sides(self.front.sides,projection='2d',labels=False,line=True,ax=ax)
+            ########################################################
 
             #   Check radius for close nodes.
             r=1*spacing   #   needs a proper method
@@ -250,8 +265,8 @@ class Mesh():
                 C=C_ideal
 
                 new_sides=[
-                    Front_side(B,C,orientation=side.orientation,vect_out_plane=side.vect_out_plane),
-                    Front_side(C,A,orientation=side.orientation,vect_out_plane=side.vect_out_plane)
+                    Front_side(C,B,orientation=side.orientation,vect_out_plane=side.vect_out_plane),
+                    Front_side(A,C,orientation=side.orientation,vect_out_plane=side.vect_out_plane)
                 ]
 
                 #   update front and panels
@@ -264,18 +279,17 @@ class Mesh():
                 
                 shared_nodes={}
                 for near_side in near_sides:
-                    if list(near_side.A) in (list(A),list(B)):
-                        shared_nodes[near_side]=near_side.A
-                    elif list(near_side.B) in (list(A),list(B)):
-                        shared_nodes[near_side]=near_side.B
+                    if list(A) in (list(near_side.A),list(near_side.B)):
+                        shared_nodes[near_side]=B
+                    elif list(B) in (list(near_side.A),list(near_side.B)):
+                        shared_nodes[near_side]=A
 
                 C=nearest_node
                 if len(shared_nodes.items())==0:
                     #   Case 2:
-
                     new_sides=[
-                        Front_side(B,C,orientation=side.orientation,vect_out_plane=side.vect_out_plane),
-                        Front_side(C,A,orientation=side.orientation,vect_out_plane=side.vect_out_plane)
+                        Front_side(C,B,orientation=side.orientation,vect_out_plane=side.vect_out_plane),
+                        Front_side(A,C,orientation=side.orientation,vect_out_plane=side.vect_out_plane)
                     ]
 
                     #   update front and panels
@@ -284,23 +298,25 @@ class Mesh():
 
                 elif len(shared_nodes.items())==1:
                     #   Case 3:
-
                     new_sides=[
                         Front_side(
-                            list(shared_nodes.values())[0],C,orientation=side.orientation,vect_out_plane=side.vect_out_plane
+                            C,list(shared_nodes.values())[0],orientation=side.orientation,vect_out_plane=side.vect_out_plane
                         )
                     ]
 
                     self.front.update(add=new_sides,remove=[side,list(shared_nodes.keys())[0]])
                     panels.append(Panel(side.vect_out_plane,A,B,C))
 
+                elif len(shared_nodes.items())==2:
+                    #   Case 4:
+                    side1,side2=list(shared_nodes.keys())
 
-            i+=1
-            Plot_sides(self.front.sides,projection='2d',labels=False,line=True)
+                    self.front.update(add=(),remove=[side,side1,side2])
+                    panels.append(Panel(side.vect_out_plane,A,B,C))
 
-        #end while
-
-        #nodes=np.array(nodes)
+            
+            Plot_sides(self.front.sides,projection='2d',labels=False,line=True,ax=ax)
+            plt.show()
 
         return panels
 

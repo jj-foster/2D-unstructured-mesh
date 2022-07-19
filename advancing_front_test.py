@@ -1,7 +1,7 @@
 import numpy as np
 
 from mesh import Mesh, Front_side, Front
-from plot_tools import Plot_nodes_2d
+from plot_tools import Plot_nodes_2d,Plot_panels
 
 vect_out_plane=np.array([0,0,1])
 
@@ -42,3 +42,4 @@ sides=[
 front=Front(sides)
 
 mesh=Mesh(front=front,spacing=1)
+#Plot_panels(mesh.panels)

@@ -22,7 +22,9 @@ class Panel():
     ----------
     A,B,C,D : np.ndarray; Corner coordinates
     """
-    def __init__(self,A,B,C,D=None):
+    def __init__(self,normal:np.array,A:np.array,B:np.array,C:np.array,D:np.array=None):
+        self.norma=normal
+
         self.A=A
         self.B=B
         self.C=C
@@ -44,20 +46,19 @@ class Front_side():
     orientation: bool; Determines which direction new nodes are generated.
     axis: geometry.Axis2_placement_3d; Axis object defining plane on which side lies. Used for calculating local definition along side.
     """
-    def __init__(self,A:np.ndarray,B:np.ndarray,orientation:bool,axis):
+    def __init__(self,A:np.ndarray,B:np.ndarray,orientation:bool,vect_out_plane:np.array):
         self.A=A
         self.B=B
         self.orientation=orientation
-
-        v1=axis.ref_vector
-        v2=axis.axis
+        self.vect_out_plane=vect_out_plane
 
         self.AB=B-A
         self.length=np.linalg.norm(self.AB)
         # Unit vectors in directrion between nodes & perpendicular
         # i.e. for ideal isoseles triangle
         self.x=self.AB/self.length
-        self.y=np.cross(self.x,v2)
+        self.y=np.cross(self.x,self.vect_out_plane)
+
 
         if orientation==False:  #   Generate panels outside instead of inside:
             self.y=-self.y
@@ -69,18 +70,20 @@ class Front():
         """Dynamic front object composed of individual tri panel sides."""
         self.sides=sides
 
+        self.nodes=self.get_nodes()
+
         return None
     
     def __call__(self,index:int)->Front_side:
         return self.sides[index]
 
-    def update(self,remove:list[Front_side],add:list[Front_side])->None:
+    def update(self,add:list[Front_side],remove:list[Front_side])->None:
         """
         Updates front by removing and adding tri panel sides.
 
         Parameters:
         ----------
-        remove_sides, add_sides: list[Front_side]; Side objects to add and remove to the front.
+        add, remove: list[Front_side]; Side objects to add and remove to the front.
 
         Returns:
         --------
@@ -89,14 +92,32 @@ class Front():
         self.sides=[side for side in self.sides if side not in remove]    #   Remove inactive sides
         self.sides.extend(add)    #   Add new active sides
 
+        self.nodes=self.get_nodes() #   refresh node list
+
         return None
 
-class Mesh():
-    def __init__(self,file:str,spacing:float)->None:
-        faces=self.Read(file)
-        self.front=self.Init_front(faces,spacing)
+    def get_nodes(self):
+        nodes=[]
+        for side in self.sides:
+            A=side.A
+            B=side.B
 
-        self.nodes,self.panels=self.advancing_front(spacing)
+            nodes.extend([A,B])
+
+        return nodes
+
+class Mesh():
+    def __init__(self,spacing:float,file:str=None,front:Front=None)->None:
+        if file==None and front==None:
+            raise TypeError("Mesh is missing 1 required positional argument: 'file' or 'front'")
+
+        if type(front)!=Front:
+            faces=self.Read(file)
+            self.front=self.Init_front(faces,spacing)
+        else:
+            self.front=front
+
+        self.panels=self.advancing_front(spacing)
 
         return None
         
@@ -138,53 +159,67 @@ class Mesh():
         """
         sides=[]
         for face in faces:
-            axis=face.plane.axis
+            vect_out_plane=face.plane.axis.ref_vector
             for bound in face.bounds:
                 orientation=bound.orientation
                 edge_loop=bound.edge_loop
                 nodes=edge_loop.gen_nodes(spacing)
 
                 for i in range(len(nodes)-1):
-                    sides.append(Front_side(nodes[i],nodes[i+1],orientation,axis))
+                    sides.append(Front_side(nodes[i],nodes[i+1],orientation,vect_out_plane))
 
         front=Front(sides)
 
         return front
 
-    def find_near_nodes(self,centre_node:np.array,nodes:np.array,r:float,in_direction=None)->dict:
+    def find_near_nodes(self,centre_node:np.array,nodes:np.array,r:float,in_direction=None,exclude=None)->dict:
         near_nodes={}
         for node in nodes:
-            x,y,z=node[0],node[1],node[2]
-            x_p,y_p,z_p=centre_node[0],centre_node[1],centre_node[2]
+            #x,y,z=node[0],node[1],node[2]
+            #x_p,y_p,z_p=centre_node[0],centre_node[1],centre_node[2]
 
-            if x_p-r<=x<=x_p+r and y_p-r<=y<=y_p+r and z_p-r<=z<=z_p+r:
-                distance=np.linalg.norm(node-centre_node)
-
-                if distance!=0:
-
-                    if type(in_direction)==np.ndarray:  #   only nodes in same direction as given vector
-                        vector=node-centre_node
-
-                        if np.dot(vector,in_direction)<0:
-                            near_nodes[distance]=node
-                    else:
+            if type(exclude)!=None:
+                exclude_=(list(x) for x in exclude)
+                if list(node) in exclude_:
+                    continue
+            
+            distance=np.linalg.norm(node-centre_node)
+            if distance<=r:
+                if type(in_direction)==np.ndarray:  #   only nodes in same direction as given vector
+                    vector=node-centre_node
+                    #print(np.rad2deg(np.dot(vector,in_direction)))
+                    if np.dot(vector,in_direction)>0:
                         near_nodes[distance]=node
+                else:
+                    near_nodes[distance]=node
 
         return near_nodes
 
+    def find_near_sides(self,node:np.array,sides:list)->list:
+        near_sides=[]
+        for side in sides:
+            A=side.A
+            B=side.B
+
+            if list(A)==list(node) or list(B)==list(node):
+                near_sides.append(side)
+        
+        return near_sides
+
     def advancing_front(self,spacing:float):
 
-        Plot_sides(self.front.sides,projection='2d',labels=False,line=True)
-        nodes=[]
-        for side in self.front.sides:
-            nodes.extend([side.A,side.B])
+        #nodes=[]
+        #for side in self.front.sides:
+        #    nodes.extend([side.A,side.B])
 
         panels=[]
         
         i=0
-        while i<5:
+        while i<1:
+            Plot_sides(self.front.sides,projection='2d',labels=False,line=True)
             side=self.front(0)
 
+            #   Find ideal node position.
             x=side.x
             y=side.y
             dx=side.length
@@ -194,47 +229,80 @@ class Mesh():
             B=side.B
             C_ideal=A+x*dx/2+y*dy
 
-            """
-            ####    Check radius for other nodes    ####
-            r=0.5*dx
+            #   Check radius for close nodes.
+            r=1*spacing   #   needs a proper method
 
-            near_A=self.find_near_nodes(A,front_nodes,r,in_direction=x)
-            near_B=self.find_near_nodes(B,front_nodes,r,in_direction=x)
-            near_nodes=dict(list(near_A.items())+list(near_B.items()))
+            near_nodes=self.find_near_nodes(
+                centre_node=C_ideal,
+                nodes=self.front.nodes,
+                r=r,
+                in_direction=y,
+                exclude=(A,B)
+            )
 
-            if near_nodes=={}: 
-                r=0.5*spacing
-                near_nodes=self.find_near_nodes(C,front_nodes,r)
-            
-            if near_nodes!={}:  
-                C=near_nodes[min(near_nodes.keys())]    #   Selects closets node
+            #   Checks to determine type of close node:
+            #       1. No close nodes, generate point in ideal position.
+            #       2. Connect to a node with no adjascent sides.
+            #       3. Connect to 1 adjascent side.
+            #       4. Connect to 2 adjascent sides (close a triangle).
+            if near_nodes=={}:
+                #   Case 1:
+                C=C_ideal
 
-            ####    Adds nodes to front and global node list    ####
-            AC_mod=np.linalg.norm(C-A)
-            BC_mod=np.linalg.norm(C-B)
-            if AC_mod<BC_mod or np.isclose(AC_mod,BC_mod,rtol=1e-5):
-                if (list(A) in np.array(new_front_nodes).tolist())==False:
-                    new_front_nodes.append(A)
-                    nodes.append(A)
-                if (list(C) in np.array(new_front_nodes).tolist())==False:
-                    new_front_nodes.append(C)
-                    nodes.append(C)
+                new_sides=[
+                    Front_side(B,C,orientation=side.orientation,vect_out_plane=side.vect_out_plane),
+                    Front_side(C,A,orientation=side.orientation,vect_out_plane=side.vect_out_plane)
+                ]
+
+                #   update front and panels
+                self.front.update(add=new_sides,remove=[side])
+                panels.append(Panel(side.vect_out_plane,A,B,C))
+
             else:
-                if (list(C) in np.array(new_front_nodes).tolist())==False:
-                    new_front_nodes.append(C)
-                    nodes.append(C)
-                if (list(B) in np.array(new_front_nodes).tolist())==False:
-                    new_front_nodes.append(B)
-                    nodes.append(B) 
-            """
+                nearest_node=near_nodes[min(near_nodes.keys())]
+                near_sides=self.find_near_sides(nearest_node,self.front.sides)
+                
+                shared_nodes={}
+                for near_side in near_sides:
+                    if list(near_side.A) in (list(A),list(B)):
+                        shared_nodes[near_side]=near_side.A
+                    elif list(near_side.B) in (list(A),list(B)):
+                        shared_nodes[near_side]=near_side.B
+
+                C=nearest_node
+                if len(shared_nodes.items())==0:
+                    #   Case 2:
+
+                    new_sides=[
+                        Front_side(B,C,orientation=side.orientation,vect_out_plane=side.vect_out_plane),
+                        Front_side(C,A,orientation=side.orientation,vect_out_plane=side.vect_out_plane)
+                    ]
+
+                    #   update front and panels
+                    self.front.update(add=new_sides,remove=[side])
+                    panels.append(Panel(side.vect_out_plane,A,B,C))
+
+                elif len(shared_nodes.items())==1:
+                    #   Case 3:
+
+                    new_sides=[
+                        Front_side(
+                            list(shared_nodes.values())[0],C,orientation=side.orientation,vect_out_plane=side.vect_out_plane
+                        )
+                    ]
+
+                    self.front.update(add=new_sides,remove=[side,list(shared_nodes.keys())[0]])
+                    panels.append(Panel(side.vect_out_plane,A,B,C))
+
 
             i+=1
+            Plot_sides(self.front.sides,projection='2d',labels=False,line=True)
 
         #end while
 
-        nodes=np.array(nodes)
+        #nodes=np.array(nodes)
 
-        return nodes, panels
+        return panels
 
 if __name__=="__main__":
     system('cls')

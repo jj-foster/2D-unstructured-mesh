@@ -5,6 +5,7 @@ from plot_tools import Plot_nodes_2d
 
 vect_out_plane=np.array([0,0,1])
 
+"""
 #   Case 1,2 test:
 
 A=np.array([0,0,0])
@@ -19,8 +20,8 @@ sides=[
     Front_side(A,B,orientation=False,vect_out_plane=vect_out_plane),
     Front_side(C,D,orientation=False,vect_out_plane=vect_out_plane)
 ]
+"""
 
-""" 
 #   Case 3,4 test:
 
 A=np.array([0,0,0])
@@ -36,7 +37,7 @@ sides=[
     Front_side(B,C,orientation=False,vect_out_plane=vect_out_plane)
     #Front_side(C,A,orientation=False,vect_out_plane=vect_out_plane)
 ]
-"""
+
 
 front=Front(sides)
 

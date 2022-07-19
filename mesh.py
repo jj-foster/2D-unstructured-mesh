@@ -7,6 +7,7 @@ Mesh generation handled here.
 from os import system
 import numpy as np
 from matplotlib import pyplot as plt
+from matplotlib.animation import ArtistAnimation
 
 from geometry import Step_read, Data_sort, Remove_duplicate_nodes
 from plot_tools import Plot_nodes_3d,Plot_nodes_2d,Plot_geom,Plot_sides,Plot_panels
@@ -190,15 +191,15 @@ class Mesh():
             
             distance=np.linalg.norm(node-centre_node)
             if distance<=r:
-                
+                """
                 if type(in_direction)==np.ndarray:  #   only nodes in same direction as given vector
                     vector=node-centre_node
                     #print(np.rad2deg(np.dot(vector,in_direction)))
                     if np.dot(vector,in_direction)>0:
                         near_nodes[distance]=node
                 else:
-                
-                    near_nodes[distance]=node
+                """
+                near_nodes[distance]=node
 
         return near_nodes
 
@@ -214,14 +215,17 @@ class Mesh():
         return near_sides
 
     def advancing_front(self,spacing:float):
+        lines=[]    #   for animation
 
         panels=[]
-        
         while True:
             if self.front.sides==[]:
                 break
+            
+            #fig,ax=plt.subplots()
+            #Plot_sides(self.front.sides,projection='2d',labels=False,line=True,ax=ax)
 
-            #Plot_sides(self.front.sides,projection='2d',labels=False,line=True)
+            #lines.append(Plot_sides(self.front.sides,projection='2d',labels=False,line=True,ax=ax))
             side=self.front(0)
 
             #   Find ideal node position.
@@ -233,16 +237,6 @@ class Mesh():
             A=side.A
             B=side.B
             C_ideal=A+x*dx/2+y*dy
-
-            ####################    DEBUGGING   ####################
-            plt.figure()
-            ax=plt.axes()
-
-            half=A+x*dx/2
-            x=np.array((np.array([A,B]),np.array([half,C_ideal])))
-            #Plot_nodes_2d(x,line=True)
-            #Plot_sides(self.front.sides,projection='2d',labels=False,line=True,ax=ax)
-            ########################################################
 
             #   Check radius for close nodes.
             r=1*spacing   #   needs a proper method
@@ -298,11 +292,19 @@ class Mesh():
 
                 elif len(shared_nodes.items())==1:
                     #   Case 3:
-                    new_sides=[
-                        Front_side(
-                            C,list(shared_nodes.values())[0],orientation=side.orientation,vect_out_plane=side.vect_out_plane
-                        )
-                    ]
+                    side_node=list(shared_nodes.values())[0]
+                    if list(side_node)==list(B):
+                        new_sides=[
+                            Front_side(
+                                C,side_node,orientation=side.orientation,vect_out_plane=side.vect_out_plane
+                            )
+                        ]
+                    elif list(side_node)==list(A):
+                        new_sides=[
+                            Front_side(
+                                side_node,C,orientation=side.orientation,vect_out_plane=side.vect_out_plane
+                            )
+                        ]
 
                     self.front.update(add=new_sides,remove=[side,list(shared_nodes.keys())[0]])
                     panels.append(Panel(side.vect_out_plane,A,B,C))
@@ -314,15 +316,21 @@ class Mesh():
                     self.front.update(add=(),remove=[side,side1,side2])
                     panels.append(Panel(side.vect_out_plane,A,B,C))
 
-            
-            Plot_sides(self.front.sides,projection='2d',labels=False,line=True,ax=ax)
-            plt.show()
+            #Plot_sides(self.front.sides,projection='2d',labels=False,line=True,ax=ax)
+            #plt.show()
 
+        #end while
+
+        """
+        ani=ArtistAnimation(fig,lines,interval=100,blit=True,repeat_delay=1000)
+        ani.save('not working2.mp4')
+        plt.show()
+        """
         return panels
 
 if __name__=="__main__":
     system('cls')
     #mesh=Mesh(file='NACA0012H.stp',spacing=30,edge_layers=1)
-    mesh=Mesh(file='circle.stp',spacing=4)
+    mesh=Mesh(file='circle.stp',spacing=1)
     
-    #Plot_panels(mesh.panels)
+    Plot_panels(mesh.panels)

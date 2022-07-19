@@ -153,7 +153,7 @@ def Plot_nodes_2d(nodes:np.ndarray,labels=False,ax=None,line=False):
     if line==False:
         ax_.scatter(x,y,s=5)
     else:
-        ax_.plot(x,y,'o-')
+        lines,=ax_.plot(x,y,'o-')
 
     if labels==True:
         for i,node in enumerate(nodes):
@@ -166,7 +166,7 @@ def Plot_nodes_2d(nodes:np.ndarray,labels=False,ax=None,line=False):
         plt.show()
         pass
     else:
-        return plt
+        return lines
 
 def Plot_sides(sides,projection,labels=True,line=False,ax=None):
     if ax==None:
@@ -180,19 +180,20 @@ def Plot_sides(sides,projection,labels=True,line=False,ax=None):
     elif projection=='3d':
         ax_=plt.axes(projection='3d')
 
+    lines=[]
     for side in sides:
         nodes=np.array([side.A,side.B])
 
         if projection=='2d':  
-            fig=Plot_nodes_2d(nodes,labels=labels,ax=ax_,line=line)
+            lines.append(Plot_nodes_2d(nodes,labels=labels,ax=ax_,line=line))
         elif projection=='3d':
-            fig=Plot_nodes_3d(nodes,labels=labels,ax=ax_,line=line)
+            Plot_nodes_3d(nodes,labels=labels,ax=ax_,line=line)
 
     if ax==None:
         plt.show()
         pass
     else:
-        return fig
+        return lines
 
 def Plot_panels(panels,ax=None):
     if ax==None:

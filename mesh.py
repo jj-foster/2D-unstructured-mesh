@@ -301,6 +301,8 @@ class Mesh():
                     d_C=(x_node-x_CA)*(y_CB-y_CA)-(y_node-y_CA)*(x_CB-x_CA)
                     d_R=(x_node-x_RA)*(y_RB-y_RA)-(y_node-y_RA)*(x_RB-x_RA)
 
+                    """Add check to work out which way is in vs out"""
+
                     if d_L>0 or d_R>0 or d_C>0:
                         continue
                     else:

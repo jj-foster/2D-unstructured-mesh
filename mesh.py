@@ -224,11 +224,11 @@ class Mesh():
 
         panels=[]
         i=0
-        while i<1:
+        while i<100:
             if self.front.sides==[]:
                 break
             
-            fig,ax=plt.subplots()
+            #fig,ax=plt.subplots()
             #Plot_sides(self.front.sides,projection='2d',labels=False,line=True,ax=ax)
 
             #lines.append(Plot_sides(self.front.sides,projection='2d',labels=False,line=True,ax=ax))
@@ -245,29 +245,15 @@ class Mesh():
             B=side.B
             C_ideal=A+x*dx/2+y*dy
 
-            centroid=(1/3)*(A+B+C_ideal)
-            r1=np.linalg.norm(centroid-A)
-            zone1_nodes=self.find_near_nodes(
-                centre_node=centroid,
+            r=1*spacing   #   needs a proper method
+            near_nodes=self.find_near_nodes(
+                centre_node=C_ideal,
                 nodes=self.front.nodes,
-                r=r1,
+                r=r,
                 in_direction=y,
                 exclude=(A,B)
             )
             
-            if zone1_nodes=={}:
-                r2=1*spacing   #   needs a proper method
-                zone2_nodes=self.find_near_nodes(
-                    centre_node=C_ideal,
-                    nodes=self.front.nodes,
-                    r=r2,
-                    in_direction=y,
-                    exclude=(A,B)
-                )
-                near_nodes=zone2_nodes
-            else:
-                near_nodes=zone1_nodes
-
             #   Checks to determine type of close node:
             #       1. No close nodes, generate point in ideal position.
             #       2. Connect to a node with no adjascent sides.
@@ -287,20 +273,63 @@ class Mesh():
                 panels.append(Panel(side.vect_out_plane,A,B,C))
 
             else:
+                ####   Check if near nodes cross adjacent sides.    ####
 
-                nearest_node=near_nodes[min(near_nodes.keys())]
-                near_sides=self.find_near_sides(nearest_node,self.front.sides)
+                adjacent_sides=[
+                    self.find_near_sides(side.A,self.front.sides),
+                    self.find_near_sides(side.B,self.front.sides)
+                ]
+                adjacent_sides=[_ for xs in adjacent_sides for _ in xs if _!=side]
+
+                side_L=adjacent_sides[0]
+                side_R=adjacent_sides[1]
                 
+                near_nodes_filtered={}
+                for dist,node in near_nodes.items():
+                    x_node,y_node,z_node=node.T
+
+                    x_CA,y_CA,z_CA=side.A.T
+                    x_LA,y_LA,z_LA=side_L.A.T
+                    x_RA,y_RA,z_RA=side_R.A.T
+
+                    x_CB,y_CB,z_CB=side.B.T
+                    x_LB,y_LB,z_LB=side_L.B.T
+                    x_RB,y_RB,z_RB=side_R.B.T
+                    
+                    # Finds min distance to side line. <=0 if inside
+                    d_L=(x_node-x_LA)*(y_LB-y_LA)-(y_node-y_LA)*(x_LB-x_LA)
+                    d_C=(x_node-x_CA)*(y_CB-y_CA)-(y_node-y_CA)*(x_CB-x_CA)
+                    d_R=(x_node-x_RA)*(y_RB-y_RA)-(y_node-y_RA)*(x_RB-x_RA)
+
+                    if d_L>0 or d_R>0 or d_C>0:
+                        continue
+                    else:
+                        near_nodes_filtered[dist]=node
+                
+                nearest_node=near_nodes_filtered[min(near_nodes_filtered.keys())]
+
+                ####    Checks if nearest node has sides connecting to current side    ####
                 shared_nodes={}
+                if list(side_L.A)==list(nearest_node) or list(side_L.B)==list(nearest_node):
+                    shared_nodes[side_L]=B
+                if list(side_R.A)==list(nearest_node) or list(side_R.B)==list(nearest_node):
+                    shared_nodes[side_R]=A
+
+                #end for
+
+                """
+                near_sides=self.find_near_sides(nearest_node,self.front.sides)
                 for near_side in near_sides:
                     if list(A) in (list(near_side.A),list(near_side.B)):
                         shared_nodes[near_side]=B
                     elif list(B) in (list(near_side.A),list(near_side.B)):
                         shared_nodes[near_side]=A
+                """
+                ####    Checks cases 2,3,4    ####
 
                 C=nearest_node
                 if len(shared_nodes.items())==0:
-                    #   Case 2:
+                    ##   Case 2:
                     new_sides=[
                         Front_side(C,B,orientation=side.orientation,vect_out_plane=side.vect_out_plane),
                         Front_side(A,C,orientation=side.orientation,vect_out_plane=side.vect_out_plane)
@@ -311,15 +340,15 @@ class Mesh():
                     panels.append(Panel(side.vect_out_plane,A,B,C))
 
                 elif len(shared_nodes.items())==1:
-                    #   Case 3:
+                    ##   Case 3:
                     side_node=list(shared_nodes.values())[0]
-                    if list(side_node)==list(B):
+                    if list(side_node)==list(A):
                         new_sides=[
                             Front_side(
                                 C,side_node,orientation=side.orientation,vect_out_plane=side.vect_out_plane
                             )
                         ]
-                    elif list(side_node)==list(A):
+                    elif list(side_node)==list(B):
                         new_sides=[
                             Front_side(
                                 side_node,C,orientation=side.orientation,vect_out_plane=side.vect_out_plane
@@ -330,7 +359,7 @@ class Mesh():
                     panels.append(Panel(side.vect_out_plane,A,B,C))
 
                 elif len(shared_nodes.items())==2:
-                    #   Case 4:
+                    ##   Case 4:
                     side1,side2=list(shared_nodes.keys())
 
                     self.front.update(add=(),remove=[side,side1,side2])
@@ -338,8 +367,8 @@ class Mesh():
             
             if debug==True:
                 #if i>200:
-                #if (i/20).is_integer()==True:
-                Plot_sides(self.front.sides,projection='2d',labels=False,line=True,ax=ax)
+                if (i/1).is_integer()==True:
+                    Plot_sides(self.front.sides,projection='2d',labels=False,line=True)
                 plt.show()
 
             i+=1
@@ -355,7 +384,7 @@ class Mesh():
 if __name__=="__main__":
     system('cls')
     #mesh=Mesh(file='NACA0012H.stp',spacing=30,edge_layers=1)
-    mesh=Mesh(file='square_loop.stp',spacing=5,debug=False)
+    mesh=Mesh(file='square_loop.stp',spacing=5,debug=True)
     print('mesh done')
     
     Plot_panels(mesh.panels)

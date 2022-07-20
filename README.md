@@ -32,14 +32,22 @@ DONE 8. generate nodes based on edge loops rather than geometry
     - create new tri panel
 
 Checks:
+- case 0:
+    1. find nodes within r
+    2. get adjacent sides (coords for A,B)
+    3. for each node:
+        d=(x−x1)(y2−y1)−(y−y1)(x2−x1)
+        if d<0 point on one side, if d>0 point on the other
+        compare with known point to get side
+        4. exclude nodes on left of left side, right of right side
 - DONE case 1:
     if no close nodes
 - DONE case 2:
     if close node and no close side
-- case 3:
+- DONE 3:
     close side(s) = sides if a node = close node
     if one node in close side(s) = current side node
-- case 4:
+- DONE 4:
     if 2 nodes in close sides = current side node
 
 ## STEP Datastructure:

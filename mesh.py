@@ -8,9 +8,13 @@ from os import system
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.animation import ArtistAnimation
+from numba import jit
 
 from geometry import Step_read, Data_sort, Remove_duplicate_nodes
 from plot_tools import Plot_nodes_3d,Plot_nodes_2d,Plot_geom,Plot_sides,Plot_panels
+
+import cProfile,pstats,io
+profiler=cProfile.Profile()
 
 class StepException(Exception):
     pass
@@ -113,7 +117,7 @@ class Front():
         return nodes
 
 class Mesh():
-    def __init__(self,spacing:float,file:str=None,front:Front=None)->None:
+    def __init__(self,spacing:float,file:str=None,front:Front=None,debug:bool=False)->None:
         if file==None and front==None:
             raise TypeError("Mesh is missing 1 required positional argument: 'file' or 'front'")
 
@@ -123,7 +127,7 @@ class Mesh():
         else:
             self.front=front
 
-        self.panels=self.advancing_front(spacing)
+        self.panels=self.advancing_front(spacing,debug)
 
         return None
         
@@ -191,7 +195,7 @@ class Mesh():
             
             distance=np.linalg.norm(node-centre_node)
             if distance<=r:
-                """
+                """ DOESN'T WORK
                 if type(in_direction)==np.ndarray:  #   only nodes in same direction as given vector
                     vector=node-centre_node
                     #print(np.rad2deg(np.dot(vector,in_direction)))
@@ -214,18 +218,21 @@ class Mesh():
         
         return near_sides
 
-    def advancing_front(self,spacing:float):
-        lines=[]    #   for animation
+    def advancing_front(self,spacing:float,debug:bool):
+        #lines=[]    #   for animation
+        #fig,ax=plt.subplots()
 
         panels=[]
-        while True:
+        i=0
+        while i<1:
             if self.front.sides==[]:
                 break
             
-            #fig,ax=plt.subplots()
+            fig,ax=plt.subplots()
             #Plot_sides(self.front.sides,projection='2d',labels=False,line=True,ax=ax)
 
             #lines.append(Plot_sides(self.front.sides,projection='2d',labels=False,line=True,ax=ax))
+            
             side=self.front(0)
 
             #   Find ideal node position.
@@ -238,16 +245,28 @@ class Mesh():
             B=side.B
             C_ideal=A+x*dx/2+y*dy
 
-            #   Check radius for close nodes.
-            r=1*spacing   #   needs a proper method
-
-            near_nodes=self.find_near_nodes(
-                centre_node=C_ideal,
+            centroid=(1/3)*(A+B+C_ideal)
+            r1=np.linalg.norm(centroid-A)
+            zone1_nodes=self.find_near_nodes(
+                centre_node=centroid,
                 nodes=self.front.nodes,
-                r=r,
+                r=r1,
                 in_direction=y,
                 exclude=(A,B)
             )
+            
+            if zone1_nodes=={}:
+                r2=1*spacing   #   needs a proper method
+                zone2_nodes=self.find_near_nodes(
+                    centre_node=C_ideal,
+                    nodes=self.front.nodes,
+                    r=r2,
+                    in_direction=y,
+                    exclude=(A,B)
+                )
+                near_nodes=zone2_nodes
+            else:
+                near_nodes=zone1_nodes
 
             #   Checks to determine type of close node:
             #       1. No close nodes, generate point in ideal position.
@@ -268,6 +287,7 @@ class Mesh():
                 panels.append(Panel(side.vect_out_plane,A,B,C))
 
             else:
+
                 nearest_node=near_nodes[min(near_nodes.keys())]
                 near_sides=self.find_near_sides(nearest_node,self.front.sides)
                 
@@ -315,22 +335,27 @@ class Mesh():
 
                     self.front.update(add=(),remove=[side,side1,side2])
                     panels.append(Panel(side.vect_out_plane,A,B,C))
+            
+            if debug==True:
+                #if i>200:
+                #if (i/20).is_integer()==True:
+                Plot_sides(self.front.sides,projection='2d',labels=False,line=True,ax=ax)
+                plt.show()
 
-            #Plot_sides(self.front.sides,projection='2d',labels=False,line=True,ax=ax)
-            #plt.show()
-
+            i+=1
         #end while
 
-        """
-        ani=ArtistAnimation(fig,lines,interval=100,blit=True,repeat_delay=1000)
-        ani.save('not working2.mp4')
-        plt.show()
-        """
+        
+        #ani=ArtistAnimation(fig,lines,interval=100,blit=True,repeat_delay=1000)
+        #ani.save('square_donut.mp4')
+        #plt.show()
+        
         return panels
 
 if __name__=="__main__":
     system('cls')
     #mesh=Mesh(file='NACA0012H.stp',spacing=30,edge_layers=1)
-    mesh=Mesh(file='circle.stp',spacing=1)
+    mesh=Mesh(file='square_loop.stp',spacing=5,debug=False)
+    print('mesh done')
     
     Plot_panels(mesh.panels)

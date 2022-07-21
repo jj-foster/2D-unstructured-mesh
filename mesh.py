@@ -4,11 +4,11 @@ Domain nodes generated here
 Mesh generation handled here.
 """
 
+from multiprocessing.sharedctypes import Value
 from os import system
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.animation import ArtistAnimation
-from numba import jit
 
 from geometry import Step_read, Data_sort, Remove_duplicate_nodes
 from plot_tools import Plot_nodes_3d,Plot_nodes_2d,Plot_geom,Plot_sides,Plot_panels
@@ -283,6 +283,10 @@ class Mesh():
 
                 side_L=adjacent_sides[0]
                 side_R=adjacent_sides[1]
+
+                norm_L=side_L.y
+                norm_R=side_R.y
+                norm_C=y
                 
                 near_nodes_filtered={}
                 for dist,node in near_nodes.items():
@@ -297,18 +301,30 @@ class Mesh():
                     x_RB,y_RB,z_RB=side_R.B.T
                     
                     # Finds min distance to side line. <=0 if inside
-                    d_L=(x_node-x_LA)*(y_LB-y_LA)-(y_node-y_LA)*(x_LB-x_LA)
-                    d_C=(x_node-x_CA)*(y_CB-y_CA)-(y_node-y_CA)*(x_CB-x_CA)
-                    d_R=(x_node-x_RA)*(y_RB-y_RA)-(y_node-y_RA)*(x_RB-x_RA)
+                    d_L_node=(x_node-x_LA)*(y_LB-y_LA)-(y_node-y_LA)*(x_LB-x_LA)
+                    d_C_node=(x_node-x_CA)*(y_CB-y_CA)-(y_node-y_CA)*(x_CB-x_CA)
+                    d_R_node=(x_node-x_RA)*(y_RB-y_RA)-(y_node-y_RA)*(x_RB-x_RA)
 
                     """Add check to work out which way is in vs out"""
-
-                    if d_L>0 or d_R>0 or d_C>0:
+                    d_L_in=(x_LA+1*norm_L[0]-x_LA)*(y_LB-y_LA)-(y_LA+1*norm_L[1]-y_LA)*(x_LB-x_LA)
+                    d_C_in=(x_CA+1*norm_C[0]-x_CA)*(y_CB-y_CA)-(y_CA+1*norm_C[1]-y_CA)*(x_CB-x_CA)
+                    d_R_in=(x_RA+1*norm_R[0]-x_RA)*(y_RB-y_RA)-(y_RA+1*norm_R[1]-y_RA)*(x_RB-x_RA)
+        
+                    if d_L_node>0 or d_R_node>0 or d_C_node>0:
+                        print(d_L_node)
+                        print(d_L_in)
                         continue
                     else:
                         near_nodes_filtered[dist]=node
-                
-                nearest_node=near_nodes_filtered[min(near_nodes_filtered.keys())]
+                #print(near_nodes_filtered)
+                try:
+                    nearest_node=near_nodes_filtered[min(near_nodes_filtered.keys())]
+                except ValueError:
+                    print(i)
+                    fig,ax=plt.subplots()
+                    Plot_sides((side_L,side,side_R),projection='2d',line=True,ax=ax)
+                    Plot_nodes_2d(np.array(list(near_nodes.values())),line=False,ax=ax)
+                    plt.show()
 
                 ####    Checks if nearest node has sides connecting to current side    ####
                 shared_nodes={}
@@ -347,13 +363,13 @@ class Mesh():
                     if list(side_node)==list(A):
                         new_sides=[
                             Front_side(
-                                C,side_node,orientation=side.orientation,vect_out_plane=side.vect_out_plane
+                                side_node,C,orientation=side.orientation,vect_out_plane=side.vect_out_plane
                             )
                         ]
                     elif list(side_node)==list(B):
                         new_sides=[
                             Front_side(
-                                side_node,C,orientation=side.orientation,vect_out_plane=side.vect_out_plane
+                                C,side_node,orientation=side.orientation,vect_out_plane=side.vect_out_plane
                             )
                         ]
 
@@ -368,9 +384,9 @@ class Mesh():
                     panels.append(Panel(side.vect_out_plane,A,B,C))
             
             if debug==True:
-                #if i>200:
-                if (i/1).is_integer()==True:
-                    Plot_sides(self.front.sides,projection='2d',labels=False,line=True)
+                if i>64:
+                    if (i/1).is_integer()==True:
+                        Plot_sides(self.front.sides,projection='2d',labels=False,line=True)
                 plt.show()
 
             i+=1

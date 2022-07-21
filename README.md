@@ -35,6 +35,8 @@ Checks:
 - case 0:
     1. find nodes within r
     2. get adjacent sides (coords for A,B)
+        method 1: find using near_sides
+        method 2: define in Front_side init what adjacent sides are (Front(-1),Front(1))
     3. for each node:
         d=(x−x1)(y2−y1)−(y−y1)(x2−x1)
         if d<0 point on one side, if d>0 point on the other

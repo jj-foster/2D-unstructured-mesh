@@ -166,7 +166,7 @@ def Plot_nodes_2d(nodes:np.ndarray,labels=False,ax=None,line=False):
         plt.show()
         pass
     else:
-        return lines
+        return plt
 
 def Plot_sides(sides,projection,labels=False,line=False,ax=None):
     if ax==None:

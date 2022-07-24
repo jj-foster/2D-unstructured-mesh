@@ -372,7 +372,6 @@ class Mesh():
                     h=np.sqrt((dx/2)**2+(dy)**2)
                     
                     if angle_A<L_constraint[1]:
-                        print('hi')
                         #crosses left constraint
                         theta=180-L_constraint[1]
 
@@ -395,7 +394,7 @@ class Mesh():
                     else:
                         print('wot')
 
-
+                    """side split goes here"""
 
                     new_sides=[
                         Front_side(C,B,orientation=side.orientation,vect_out_plane=side.vect_out_plane),

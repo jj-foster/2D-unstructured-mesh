@@ -57,11 +57,11 @@ class Front_side():
         self.orientation=orientation
         self.vect_out_plane=vect_out_plane
 
-        self.AB=B-A
-        self.length=np.linalg.norm(self.AB)
+        self.vector=B-A
+        self.length=np.linalg.norm(self.vector)
         # Unit vectors in directrion between nodes & perpendicular
         # i.e. for ideal isoseles triangle
-        self.x=self.AB/self.length
+        self.x=self.vector/self.length
         self.y=np.cross(self.x,self.vect_out_plane)
 
         if orientation==False:  #   Generate panels outside instead of inside:
@@ -182,12 +182,13 @@ class Mesh():
 
         return front
 
-    def find_near_nodes(self,centre_node:np.array,nodes:np.array,r:float,in_direction=None,exclude=None)->dict:
-        near_nodes={}
+    def find_near_nodes(self,centre_node:np.array,nodes:np.array,r:float,in_direction=None,exclude=None)->list:
+        near_nodes=[]
         for node in nodes:
             #x,y,z=node[0],node[1],node[2]
             #x_p,y_p,z_p=centre_node[0],centre_node[1],centre_node[2]
 
+            #print(node)
             if type(exclude)!=None:
                 exclude_=(list(x) for x in exclude)
                 if list(node) in exclude_:
@@ -203,7 +204,7 @@ class Mesh():
                         near_nodes[distance]=node
                 else:
                 """
-                near_nodes[distance]=node
+                near_nodes.append((node,distance))
 
         return near_nodes
 
@@ -218,13 +219,93 @@ class Mesh():
         
         return near_sides
 
+    def filter_near_nodes(self,current_side:Front_side,near_nodes:list):
+        def check_side_direction(side:Front_side,node:np.ndarray)->tuple:
+            assert type(side)==Front_side
+            assert type(node)==np.ndarray
+
+            norm_side=side.y
+            x_side_A,y_side_A,z_side_A=side.A.T
+            x_side_B,y_side_B,z_side_B=side.B.T
+            d_side_in=(x_side_A+1*norm_side[0]-x_side_A)*(y_side_B-y_side_A)-(y_side_A+1*norm_side[1]-y_side_A)*(x_side_B-x_side_A)
+
+            x_node,y_node,z_node=node.T
+            d_node=(x_node-x_side_A)*(y_side_B-y_side_A)-(y_node-y_side_A)*(x_side_B-x_side_A)
+
+            return d_node,d_side_in
+    
+        adjacent_sides=[
+            self.find_near_sides(current_side.A,self.front.sides),
+            self.find_near_sides(current_side.B,self.front.sides)
+        ]
+        adjacent_sides=[_ for xs in adjacent_sides for _ in xs if _!=current_side]
+        
+        #   Remove adjacent sides with nodes below current side from consideration.
+        adjacent_sides_in={}
+        for adj_side in adjacent_sides:
+            if list(adj_side.A)==list(current_side.A):
+                connect="A"
+                node=adj_side.A
+            elif list(adj_side.A)==list(current_side.B):
+                connect="B"
+                node=adj_side.B
+            elif list(adj_side.B)==list(current_side.A):
+                connect="A"
+                node=adj_side.A
+            elif list(adj_side.B)==list(current_side.B):
+                connect="B"
+                node=adj_side.B
+
+            d_node,d_current_in=check_side_direction(current_side,node)
+            
+            if d_node*d_current_in>0:   #   if above current side
+                adjacent_sides_in[adj_side]=connect
+        
+        #   Calculates constraining sides & angels
+        L_angle=0
+        R_angle=0
+        L_constraint=(None,0)
+        R_constraint=(None,0)
+        for adj_side,connect in adjacent_sides_in.items():
+            angle=np.rad2deg(np.arccos(np.dot(adj_side.vector,current_side.vector)/(adj_side.length*current_side.length)))
+            
+            if connect=="A":
+                if angle>L_angle:
+                    L_angle=angle
+                    L_constraint=(adj_side,angle)
+            else:
+                if angle>R_angle:
+                    R_angle=angle
+                    R_constraint=(adj_side,angle)
+        
+        #   Filter near nodes by constraints
+        near_nodes_filtered=[]
+        for node,dist in near_nodes:
+
+            node2A=current_side.A-node
+            B2node=node-current_side.B
+
+            node2A_mod=np.linalg.norm(node2A)
+            B2node_mod=np.linalg.norm(B2node)
+
+            angle_A=np.rad2deg(np.arccos(np.dot(node2A,current_side.vector)/(node2A_mod*current_side.length)))
+            angle_B=np.rad2deg(np.arccos(np.dot(B2node,current_side.vector)/(B2node_mod*current_side.length)))
+            
+            if angle_A>=L_angle and angle_B>=R_angle:   #   if within angle constraints
+                d_node,d_current_in=check_side_direction(current_side,node)
+
+                if d_node*d_current_in>0:   #   if above current side
+                    near_nodes_filtered.append((node,dist))
+
+        return near_nodes_filtered,(L_constraint,R_constraint)
+
     def advancing_front(self,spacing:float,debug:bool):
         #lines=[]    #   for animation
         #fig,ax=plt.subplots()
 
         panels=[]
         i=0
-        while i<100:
+        while i<1:
             if self.front.sides==[]:
                 break
             
@@ -253,96 +334,105 @@ class Mesh():
                 in_direction=y,
                 exclude=(A,B)
             )
-            
+            near_nodes_filtered,(L_constraint,R_constraint)=self.filter_near_nodes(side,near_nodes)
+
             #   Checks to determine type of close node:
-            #       1. No close nodes, generate point in ideal position.
+            #       1a. No close nodes, generate point in ideal position.
+            #       1b. No close nodes but ideal crosses constraint.
             #       2. Connect to a node with no adjascent sides.
             #       3. Connect to 1 adjascent side.
             #       4. Connect to 2 adjascent sides (close a triangle).
-            if near_nodes=={}:
-                #   Case 1:
-                C=C_ideal
+            if near_nodes_filtered==[]:
+                node=C_ideal
+                
+                node2A=A-node
+                B2node=node-B
 
-                new_sides=[
-                    Front_side(C,B,orientation=side.orientation,vect_out_plane=side.vect_out_plane),
-                    Front_side(A,C,orientation=side.orientation,vect_out_plane=side.vect_out_plane)
-                ]
+                node2A_mod=np.linalg.norm(node2A)
+                B2node_mod=np.linalg.norm(B2node)
 
-                #   update front and panels
-                self.front.update(add=new_sides,remove=[side])
-                panels.append(Panel(side.vect_out_plane,A,B,C))
+                angle_A=np.rad2deg(np.arccos(np.dot(node2A,side.vector)/(node2A_mod*side.length)))
+                angle_B=np.rad2deg(np.arccos(np.dot(B2node,side.vector)/(B2node_mod*side.length)))
+                
+                if angle_A>=L_constraint[1] and angle_B>=R_constraint[1]:   #   if within angle constraints
+                    #   Case 1a:
+                    C=C_ideal
+
+                    new_sides=[
+                        Front_side(C,B,orientation=side.orientation,vect_out_plane=side.vect_out_plane),
+                        Front_side(A,C,orientation=side.orientation,vect_out_plane=side.vect_out_plane)
+                    ]
+
+                    #   update front and panels
+                    self.front.update(add=new_sides,remove=[side])
+                    panels.append(Panel(side.vect_out_plane,A,B,C))
+
+                else:
+                    #   Case 1b:
+                    h=np.sqrt((dx/2)**2+(dy)**2)
+                    
+                    if angle_A<L_constraint[1]:
+                        print('hi')
+                        #crosses left constraint
+                        theta=180-L_constraint[1]
+
+                        dx_=h*np.cos(np.deg2rad(theta))
+                        dy_=h*np.sin(np.deg2rad(theta))
+                        C=A+dx_*x+dy_*y
+
+                        remove=[L_constraint[0],side]
+                    
+                    elif angle_B<R_constraint[1]:
+                        #crosses right constraint
+                        theta=180-R_constraint[1]
+
+                        dx_=h*np.cos(np.deg2rad(theta))
+                        dy_=h*np.sin(np.deg2rad(theta))
+                        C=B-dx_*x+dy_*y
+
+                        remove=[R_constraint[0],side]
+                        
+                    else:
+                        print('wot')
+
+
+
+                    new_sides=[
+                        Front_side(C,B,orientation=side.orientation,vect_out_plane=side.vect_out_plane),
+                        Front_side(A,C,orientation=side.orientation,vect_out_plane=side.vect_out_plane)
+                    ]
+
+                    #   update front and panels
+                    self.front.update(add=new_sides,remove=[side])
+                    panels.append(Panel(side.vect_out_plane,A,B,C))
 
             else:
                 ####   Check if near nodes cross adjacent sides.    ####
-
-                adjacent_sides=[
-                    self.find_near_sides(side.A,self.front.sides),
-                    self.find_near_sides(side.B,self.front.sides)
-                ]
-                adjacent_sides=[_ for xs in adjacent_sides for _ in xs if _!=side]
-
-                side_L=adjacent_sides[0]
-                side_R=adjacent_sides[1]
-
-                norm_L=side_L.y
-                norm_R=side_R.y
-                norm_C=y
                 
-                near_nodes_filtered={}
-                for dist,node in near_nodes.items():
-                    x_node,y_node,z_node=node.T
-
-                    x_CA,y_CA,z_CA=side.A.T
-                    x_LA,y_LA,z_LA=side_L.A.T
-                    x_RA,y_RA,z_RA=side_R.A.T
-
-                    x_CB,y_CB,z_CB=side.B.T
-                    x_LB,y_LB,z_LB=side_L.B.T
-                    x_RB,y_RB,z_RB=side_R.B.T
-                    
-                    # Finds min distance to side line. <=0 if inside
-                    d_L_node=(x_node-x_LA)*(y_LB-y_LA)-(y_node-y_LA)*(x_LB-x_LA)
-                    d_C_node=(x_node-x_CA)*(y_CB-y_CA)-(y_node-y_CA)*(x_CB-x_CA)
-                    d_R_node=(x_node-x_RA)*(y_RB-y_RA)-(y_node-y_RA)*(x_RB-x_RA)
-
-                    """Add check to work out which way is in vs out"""
-                    d_L_in=(x_LA+1*norm_L[0]-x_LA)*(y_LB-y_LA)-(y_LA+1*norm_L[1]-y_LA)*(x_LB-x_LA)
-                    d_C_in=(x_CA+1*norm_C[0]-x_CA)*(y_CB-y_CA)-(y_CA+1*norm_C[1]-y_CA)*(x_CB-x_CA)
-                    d_R_in=(x_RA+1*norm_R[0]-x_RA)*(y_RB-y_RA)-(y_RA+1*norm_R[1]-y_RA)*(x_RB-x_RA)
-        
-                    if d_L_node>0 or d_R_node>0 or d_C_node>0:
-                        print(d_L_node)
-                        print(d_L_in)
-                        continue
-                    else:
-                        near_nodes_filtered[dist]=node
-                #print(near_nodes_filtered)
-                try:
-                    nearest_node=near_nodes_filtered[min(near_nodes_filtered.keys())]
-                except ValueError:
-                    print(i)
-                    fig,ax=plt.subplots()
-                    Plot_sides((side_L,side,side_R),projection='2d',line=True,ax=ax)
-                    Plot_nodes_2d(np.array(list(near_nodes.values())),line=False,ax=ax)
-                    plt.show()
-
-                ####    Checks if nearest node has sides connecting to current side    ####
-                shared_nodes={}
-                if list(side_L.A)==list(nearest_node) or list(side_L.B)==list(nearest_node):
-                    shared_nodes[side_L]=B
-                if list(side_R.A)==list(nearest_node) or list(side_R.B)==list(nearest_node):
-                    shared_nodes[side_R]=A
-
-                #end for
+                min_dist=1e99
+                for node,dist in near_nodes_filtered:
+                    if dist<min_dist:
+                        min_dist=dist
+                        nearest_node=node
 
                 """
+                ####    Checks if nearest node has sides connecting to current side    ####
+                shared_nodes={}
+                if L_constraint!=None:
+                    shared_nodes[L_constraint]=B
+                if R_constraint!=None:
+                    shared_nodes[R_constraint]=A
+                """
+                #end for
+                
+                shared_nodes={}
                 near_sides=self.find_near_sides(nearest_node,self.front.sides)
                 for near_side in near_sides:
                     if list(A) in (list(near_side.A),list(near_side.B)):
                         shared_nodes[near_side]=B
                     elif list(B) in (list(near_side.A),list(near_side.B)):
                         shared_nodes[near_side]=A
-                """
+                
                 ####    Checks cases 2,3,4    ####
 
                 C=nearest_node
@@ -384,15 +474,16 @@ class Mesh():
                     panels.append(Panel(side.vect_out_plane,A,B,C))
             
             if debug==True:
-                if i>64:
-                    if (i/1).is_integer()==True:
-                        Plot_sides(self.front.sides,projection='2d',labels=False,line=True)
-                plt.show()
+                #if i>325:
+                    #print('\n')
+                if (i/1).is_integer()==True:
+                    Plot_sides(self.front.sides)
+                #plt.show()
 
             i+=1
         #end while
 
-        
+        #Plot_sides(self.front.sides)
         #ani=ArtistAnimation(fig,lines,interval=100,blit=True,repeat_delay=1000)
         #ani.save('square_donut.mp4')
         #plt.show()
@@ -402,7 +493,7 @@ class Mesh():
 if __name__=="__main__":
     system('cls')
     #mesh=Mesh(file='NACA0012H.stp',spacing=30,edge_layers=1)
-    mesh=Mesh(file='square_loop.stp',spacing=5,debug=True)
+    mesh=Mesh(file='square_loop.stp',spacing=3,debug=True)
     print('mesh done')
     
     Plot_panels(mesh.panels)

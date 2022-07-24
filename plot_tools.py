@@ -151,7 +151,7 @@ def Plot_nodes_2d(nodes:np.ndarray,labels=False,ax=None,line=False):
         ax_=ax
 
     if line==False:
-        ax_.scatter(x,y,s=5)
+        ax_.scatter(x,y,color='r',marker='x')
     else:
         lines,=ax_.plot(x,y,'o-')
 
@@ -168,26 +168,20 @@ def Plot_nodes_2d(nodes:np.ndarray,labels=False,ax=None,line=False):
     else:
         return plt
 
-def Plot_sides(sides,projection,labels=False,line=False,ax=None):
+def Plot_sides(sides,labels=False,line=True,ax=None):
     if ax==None:
         fig=plt.figure()
         ax_=plt.axes()
     else:
         ax_=ax
-
-    if projection=='2d':  
-        ax_.set_aspect('equal')
-    elif projection=='3d':
-        ax_=plt.axes(projection='3d')
+  
+    ax_.set_aspect('equal')
 
     lines=[]
     for side in sides:
         nodes=np.array([side.A,side.B])
 
-        if projection=='2d':  
-            lines.append(Plot_nodes_2d(nodes,labels=labels,ax=ax_,line=line))
-        elif projection=='3d':
-            Plot_nodes_3d(nodes,labels=labels,ax=ax_,line=line)
+        lines.append(Plot_nodes_2d(nodes,labels=labels,ax=ax_,line=line))
 
     if ax==None:
         plt.show()
@@ -206,7 +200,7 @@ def Plot_panels(panels,ax=None):
         x,y,z=panel.points.T
 
         if panel.D==None:
-            ax_.plot(x,y,'-')
+            ax_.plot(x,y,'-',color='k')
     
     ax_.set_aspect('equal')
     

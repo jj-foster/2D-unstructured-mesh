@@ -32,24 +32,24 @@ DONE 8. generate nodes based on edge loops rather than geometry
     - create new tri panel
 
 Checks:
-- case 0:
+- DONE case 0:
     1. find nodes within r
-    2. get adjacent sides (coords for A,B)
-        method 1: find using near_sides
-        method 2: define in Front_side init what adjacent sides are (Front(-1),Front(1))
-    3. for each node:
+    2. get ALL adjacent sides (coords for A,B)
+    3. seperate by connection point
+    4. for each side per connection find smallest angle > select as direct adjacent side
+    5. for each node:
         d=(x−x1)(y2−y1)−(y−y1)(x2−x1)
         if d<0 point on one side, if d>0 point on the other
         compare with known point to get side
-        4. exclude nodes on left of left side, right of right side
+        6. exclude nodes on left of left side, right of right side
 - DONE case 1:
     if no close nodes
-- DONE case 2:
+- case 2:
     if close node and no close side
-- DONE 3:
+- case 3:
     close side(s) = sides if a node = close node
     if one node in close side(s) = current side node
-- DONE 4:
+- case 4:
     if 2 nodes in close sides = current side node
 
 ## STEP Datastructure:

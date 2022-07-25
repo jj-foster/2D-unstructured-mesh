@@ -113,7 +113,19 @@ class Mesh():
     def __init__(self,spacing:float,front:Front,debug:bool=False)->None:
         self.front=front
 
+        profiler.enable()
+
         self.panels=self.advancing_front(spacing,debug)
+
+        profiler.disable()
+        s=io.StringIO()
+        stats=pstats.Stats(profiler,stream=s)
+        stats.strip_dirs()
+        stats.sort_stats('cumtime')
+        stats.print_stats()
+
+        with open('profile.txt','w+') as f:
+            f.write(s.getvalue())
 
         return None
 
@@ -138,27 +150,29 @@ class Mesh():
                 near_nodes.append((node,distance))
         
         return near_nodes
-
-    def find_connected_sides(self,node:np.array,sides:list)->list:
+    
+    @staticmethod
+    @nb.jit(nopython=True)
+    def find_connected_sides(node:np.array,side_nodes:np.ndarray)->list:
         """
         Finds sides in the front attached to a node.
 
         Arguments:
             node: {np.array} -- Node to find connected sides.
-            sides: {list} -- List of sides to search from.
+            sides: {np.ndarray} -- List of sides to search from.
         
         Returns:
             near_sides: {list} -- List of sides connected to node.
         """
-        near_sides=[]
-        for side in sides:
-            A=side.A
-            B=side.B
+        near_side_is=[]
+        for i,side in enumerate(side_nodes):
+            A=side[0]
+            B=side[1]
 
-            if list(A)==list(node) or list(B)==list(node):
-                near_sides.append(side)
+            if np.array_equal(A,node) or np.array_equal(B,node):
+                near_side_is.append(i)
         
-        return near_sides
+        return near_side_is
 
     def filter_near_nodes(self,current_side:Front_side,near_nodes:list):
         """
@@ -173,6 +187,7 @@ class Mesh():
             L_constraint: {Front_side,float} -- Left constraining side and angle (side,angle).
             R_constraint: {Front_side,float} -- Right constraining side and angle (side,angle).
         """
+
         def check_side_direction(side:Front_side,node:np.ndarray)->tuple:
             """
             Calculates which side of a line a point is.
@@ -197,12 +212,16 @@ class Mesh():
             d_node=(x_node-x_side_A)*(y_side_B-y_side_A)-(y_node-y_side_A)*(x_side_B-x_side_A)
 
             return d_node,d_side_in
-    
-        adjacent_sides=[
-            self.find_connected_sides(current_side.A,self.front.sides),
-            self.find_connected_sides(current_side.B,self.front.sides)
+
+
+        front_side_nodes=np.array([(x.A,x.B) for x in self.front.sides])
+        adjacent_side_is=[
+            self.find_connected_sides(current_side.A,front_side_nodes),
+            self.find_connected_sides(current_side.B,front_side_nodes)
         ]
-        adjacent_sides=[_ for xs in adjacent_sides for _ in xs if _!=current_side]
+        adjacent_side_is=[_ for xs in adjacent_side_is for _ in xs if _!=current_side]
+
+        adjacent_sides=[self.front.sides[i] for i in adjacent_side_is]
         
         #   Remove adjacent sides with nodes below current side from consideration.
         adjacent_sides_in={}
@@ -251,11 +270,18 @@ class Mesh():
 
             node2A_mod=np.linalg.norm(node2A)
             B2node_mod=np.linalg.norm(B2node)
-            """warning happening because filter is called before cases identified. Not an issue, just slows it
-            down a touch. Add something to stop it printing the warning"""
-            angle_A=np.rad2deg(np.arccos(np.dot(node2A,current_side.vector)/(node2A_mod*current_side.length)))
-            angle_B=np.rad2deg(np.arccos(np.dot(B2node,current_side.vector)/(B2node_mod*current_side.length)))
             
+            if node2A_mod!=0 and current_side.length!=0:
+                Adot=np.dot(node2A,current_side.vector)/(node2A_mod*current_side.length)
+                angle_A=np.rad2deg(np.arccos(Adot))
+            else:
+                angle_A=180
+            if B2node_mod!=0 and current_side.length!=0:
+                Bdot=np.dot(B2node,current_side.vector)/(B2node_mod*current_side.length)
+                angle_B=np.rad2deg(np.arccos(Bdot))
+            else:
+                angle_B=180
+
             if angle_A>=L_angle and angle_B>=R_angle:   #   if within angle constraints
                 d_node,d_current_in=check_side_direction(current_side,node)
 
@@ -408,7 +434,11 @@ class Mesh():
                 #end for
                 
                 shared_nodes={}
-                near_sides=self.find_connected_sides(nearest_node,self.front.sides)
+
+                front_side_nodes=np.array([(x.A,x.B) for x in self.front.sides])
+                near_side_is=self.find_connected_sides(nearest_node,front_side_nodes)
+                near_sides=[self.front.sides[i] for i in near_side_is]
+                
                 for near_side in near_sides:
                     if list(A) in (list(near_side.A),list(near_side.B)):
                         shared_nodes[near_side]=B
@@ -456,9 +486,9 @@ class Mesh():
                     panels.append(Panel(side.vect_out_plane,A,B,C))
             
             if debug==True:
-                if i>328:
+                if i>320:
                     if (i/1).is_integer()==True:
-                        Plot_sides(self.front.sides)
+                        Plot_sides(np.array(self.front.sides))
 
             i+=1
         #end while
@@ -517,15 +547,15 @@ def init_front(faces:list,spacing:float)->list:
 
     return front
 
-
 if __name__=="__main__":
-    system('cls')
-
+    #system('cls')
+    
     faces=read('square_loop.stp')
-    spacing=1
+    spacing=3
 
     front=init_front(faces,spacing=spacing)
-    mesh=Mesh(front=front,spacing=spacing,debug=False)
+
+    mesh=Mesh(front=front,spacing=spacing,debug=True)
     print('mesh done')
     
     Plot_panels(mesh.panels)

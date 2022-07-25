@@ -1,14 +1,7 @@
-"""
-Bounding nodes generated within respective class
-Domain nodes generated here
-Mesh generation handled here.
-"""
-
-from multiprocessing.sharedctypes import Value
 from os import system
 import numpy as np
-from matplotlib import pyplot as plt
 from matplotlib.animation import ArtistAnimation
+import numba as nb
 
 from geometry import Step_read, Data_sort, Remove_duplicate_nodes
 from plot_tools import Plot_nodes_3d,Plot_nodes_2d,Plot_geom,Plot_sides,Plot_panels
@@ -114,7 +107,7 @@ class Front():
 
             nodes.extend([A,B])
 
-        return nodes
+        return np.array(nodes)
 
 class Mesh():
     def __init__(self,spacing:float,file:str=None,front:Front=None,debug:bool=False)->None:
@@ -182,33 +175,39 @@ class Mesh():
 
         return front
 
-    def find_near_nodes(self,centre_node:np.array,nodes:np.array,r:float,in_direction=None,exclude=None)->list:
+    @staticmethod
+    @nb.jit(nopython=True)
+    def find_near_nodes(centre_node:np.ndarray,nodes:np.ndarray,r:float)->list:
+        """
+        Finds nodes in radius around centre node.
+
+        Arguments:
+            centre_node: {np.ndarray} -- Central node to search around.
+            nodes: {np.ndarray} -- Array of nodes to search in.
+            r: {float} -- Radius of search area.
+
+        Returns:
+            near_nodes: {np.ndarray} -- List of nodes within search area.
+        """
         near_nodes=[]
         for node in nodes:
-            #x,y,z=node[0],node[1],node[2]
-            #x_p,y_p,z_p=centre_node[0],centre_node[1],centre_node[2]
-
-            #print(node)
-            if type(exclude)!=None:
-                exclude_=(list(x) for x in exclude)
-                if list(node) in exclude_:
-                    continue
-            
             distance=np.linalg.norm(node-centre_node)
             if distance<=r:
-                """ DOESN'T WORK
-                if type(in_direction)==np.ndarray:  #   only nodes in same direction as given vector
-                    vector=node-centre_node
-                    #print(np.rad2deg(np.dot(vector,in_direction)))
-                    if np.dot(vector,in_direction)>0:
-                        near_nodes[distance]=node
-                else:
-                """
                 near_nodes.append((node,distance))
-
+        
         return near_nodes
 
-    def find_near_sides(self,node:np.array,sides:list)->list:
+    def find_connected_sides(self,node:np.array,sides:list)->list:
+        """
+        Finds sides in the front attached to a node.
+
+        Arguments:
+            node: {np.array} -- Node to find connected sides.
+            sides: {list} -- List of sides to search from.
+        
+        Returns:
+            near_sides: {list} -- List of sides connected to node.
+        """
         near_sides=[]
         for side in sides:
             A=side.A
@@ -220,7 +219,30 @@ class Mesh():
         return near_sides
 
     def filter_near_nodes(self,current_side:Front_side,near_nodes:list):
+        """
+        Finds most constraining left and right sides connected to the current side and works out if nodes are within these bounds,
+
+        Attributes:
+            current_side: {Front_side} -- Current side in the front to consider.
+            near_nodes: {list} -- List of nodes to be put through the filter.
+
+        Returns:
+            near_nodes_filetered: {list} -- List of nodes within the bounds.
+            L_constraint: {Front_side,float} -- Left constraining side and angle (side,angle).
+            R_constraint: {Front_side,float} -- Right constraining side and angle (side,angle).
+        """
         def check_side_direction(side:Front_side,node:np.ndarray)->tuple:
+            """
+            Calculates which side of a line a point is.
+
+            Attributes:
+                side: {Front_side} -- Dividing line to check which side the point is on.
+                node: {np.ndarray} -- Point to work out which side of the line it is on.
+
+            Returns:
+                d_node: {float} -- Min. distance between node and line.
+                d_side_in: {float} -- Used to compare sign with d_node. If both have the same sign, both are on the same side.
+            """
             assert type(side)==Front_side
             assert type(node)==np.ndarray
 
@@ -235,8 +257,8 @@ class Mesh():
             return d_node,d_side_in
     
         adjacent_sides=[
-            self.find_near_sides(current_side.A,self.front.sides),
-            self.find_near_sides(current_side.B,self.front.sides)
+            self.find_connected_sides(current_side.A,self.front.sides),
+            self.find_connected_sides(current_side.B,self.front.sides)
         ]
         adjacent_sides=[_ for xs in adjacent_sides for _ in xs if _!=current_side]
         
@@ -300,20 +322,23 @@ class Mesh():
         return near_nodes_filtered,(L_constraint,R_constraint)
 
     def advancing_front(self,spacing:float,debug:bool):
-        #lines=[]    #   for animation
-        #fig,ax=plt.subplots()
+        """
+        Advancing front mesh generation algorithm. Currently does not use guide nodes.
 
+        Arguments:
+            spacing: {float} -- Target spacing between nodes.
+            debug: {bool} -- Enable debug mode.
+
+        Returns:
+            panels: {list} -- List of generated tri panels.
+
+        """
         panels=[]
         i=0
         while True:
             if self.front.sides==[]:
                 break
-            
-            #fig,ax=plt.subplots()
-            #Plot_sides(self.front.sides,projection='2d',labels=False,line=True,ax=ax)
 
-            #lines.append(Plot_sides(self.front.sides,projection='2d',labels=False,line=True,ax=ax))
-            
             side=self.front(0)
 
             #   Find ideal node position.
@@ -327,14 +352,18 @@ class Mesh():
             C_ideal=A+x*dx/2+y*dy
 
             r=1*spacing   #   needs a proper method
+            front_nodes=self.front.nodes
             near_nodes=self.find_near_nodes(
                 centre_node=C_ideal,
-                nodes=self.front.nodes,
+                nodes=front_nodes,
                 r=r,
-                in_direction=y,
-                exclude=(A,B)
             )
-            near_nodes_filtered,(L_constraint,R_constraint)=self.filter_near_nodes(side,near_nodes)
+            near_nodes_=[]
+            for node in near_nodes:
+                if list(node)!=list(A) and list(node)!=list(B):
+                    near_nodes_.append(node)
+            
+            near_nodes_filtered,(L_constraint,R_constraint)=self.filter_near_nodes(side,near_nodes_)
 
             #   Checks to determine type of close node:
             #       1a. No close nodes, generate point in ideal position.
@@ -436,7 +465,7 @@ class Mesh():
                 #end for
                 
                 shared_nodes={}
-                near_sides=self.find_near_sides(nearest_node,self.front.sides)
+                near_sides=self.find_connected_sides(nearest_node,self.front.sides)
                 for near_side in near_sides:
                     if list(A) in (list(near_side.A),list(near_side.B)):
                         shared_nodes[near_side]=B
@@ -485,25 +514,18 @@ class Mesh():
             
             if debug==True:
                 if i>328:
-                    #print('\n')
                     if (i/1).is_integer()==True:
                         Plot_sides(self.front.sides)
-                #plt.show()
 
             i+=1
         #end while
 
-        #Plot_sides(self.front.sides)
-        #ani=ArtistAnimation(fig,lines,interval=100,blit=True,repeat_delay=1000)
-        #ani.save('square_donut.mp4')
-        #plt.show()
-        
         return panels
 
 if __name__=="__main__":
     system('cls')
     #mesh=Mesh(file='NACA0012H.stp',spacing=30,edge_layers=1)
-    mesh=Mesh(file='circle.stp',spacing=3,debug=False)
+    mesh=Mesh(file='circle.stp',spacing=0.3,debug=False)
     print('mesh done')
     
     Plot_panels(mesh.panels)

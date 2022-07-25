@@ -44,11 +44,11 @@ sides=[
 # Case 1b test:
 A=np.array([0,0,0])
 B=np.array([1,0,0])
-C=np.array([2,2,0])
+C=np.array([-2,2,0])
 
 sides=[
     Front_side(A,B,orientation=False,vect_out_plane=vect_out_plane),
-    Front_side(C,A,orientation=False,vect_out_plane=vect_out_plane)
+    Front_side(B,C,orientation=False,vect_out_plane=vect_out_plane)
 ]
 
 """

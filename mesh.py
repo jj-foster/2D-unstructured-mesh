@@ -305,7 +305,7 @@ class Mesh():
 
         panels=[]
         i=0
-        while i<1:
+        while True:
             if self.front.sides==[]:
                 break
             
@@ -374,35 +374,46 @@ class Mesh():
                     if angle_A<L_constraint[1]:
                         #crosses left constraint
                         theta=180-L_constraint[1]
-
                         dx_=h*np.cos(np.deg2rad(theta))
                         dy_=h*np.sin(np.deg2rad(theta))
                         C=A+dx_*x+dy_*y
 
                         remove=[L_constraint[0],side]
+                        split=Front_side(L_constraint[0].A,
+                            C,
+                            orientation=L_constraint[0].orientation,
+                            vect_out_plane=L_constraint[0].vect_out_plane
+                        )
+
+                        new_sides=[
+                            Front_side(C,B,orientation=side.orientation,vect_out_plane=side.vect_out_plane),
+                            split
+                        ]
                     
                     elif angle_B<R_constraint[1]:
                         #crosses right constraint
                         theta=180-R_constraint[1]
-
-                        dx_=h*np.cos(np.deg2rad(theta))
+                        dx_=dx-h*np.cos(np.deg2rad(theta))
                         dy_=h*np.sin(np.deg2rad(theta))
-                        C=B-dx_*x+dy_*y
+                        C=A+dx_*x+dy_*y
 
                         remove=[R_constraint[0],side]
-                        
+                        split=Front_side(C,
+                            R_constraint[0].B,
+                            orientation=R_constraint[0].orientation,
+                            vect_out_plane=R_constraint[0].vect_out_plane
+                        )
+
+                        new_sides=[
+                            Front_side(A,C,orientation=side.orientation,vect_out_plane=side.vect_out_plane),
+                            split
+                        ]
+                    
                     else:
                         print('wot')
 
-                    """side split goes here"""
-
-                    new_sides=[
-                        Front_side(C,B,orientation=side.orientation,vect_out_plane=side.vect_out_plane),
-                        Front_side(A,C,orientation=side.orientation,vect_out_plane=side.vect_out_plane)
-                    ]
-
                     #   update front and panels
-                    self.front.update(add=new_sides,remove=[side])
+                    self.front.update(add=new_sides,remove=remove)
                     panels.append(Panel(side.vect_out_plane,A,B,C))
 
             else:
@@ -473,10 +484,10 @@ class Mesh():
                     panels.append(Panel(side.vect_out_plane,A,B,C))
             
             if debug==True:
-                #if i>325:
+                if i>328:
                     #print('\n')
-                if (i/1).is_integer()==True:
-                    Plot_sides(self.front.sides)
+                    if (i/1).is_integer()==True:
+                        Plot_sides(self.front.sides)
                 #plt.show()
 
             i+=1
@@ -492,7 +503,7 @@ class Mesh():
 if __name__=="__main__":
     system('cls')
     #mesh=Mesh(file='NACA0012H.stp',spacing=30,edge_layers=1)
-    mesh=Mesh(file='square_loop.stp',spacing=3,debug=True)
+    mesh=Mesh(file='circle.stp',spacing=3,debug=False)
     print('mesh done')
     
     Plot_panels(mesh.panels)

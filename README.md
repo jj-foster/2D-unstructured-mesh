@@ -10,10 +10,11 @@ DONE 6. Move plotting to new file
 DONE 7. Generate nodes on lines - within geom type class
 DONE 8. generate nodes based on edge loops rather than geometry
 9. Advancing front panel/node generation
+10. Optimise advancing front code
 
-10. mesh smoothing
-11. quad dominant mesh
-12. fully quad mesh
+11. mesh smoothing
+12. quad dominant mesh
+13. fully quad mesh
 ```
 
 ## Advancing Front Algorithm:

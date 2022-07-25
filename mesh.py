@@ -110,70 +110,12 @@ class Front():
         return np.array(nodes)
 
 class Mesh():
-    def __init__(self,spacing:float,file:str=None,front:Front=None,debug:bool=False)->None:
-        if file==None and front==None:
-            raise TypeError("Mesh is missing 1 required positional argument: 'file' or 'front'")
-
-        if type(front)!=Front:
-            faces=self.Read(file)
-            self.front=self.Init_front(faces,spacing)
-        else:
-            self.front=front
+    def __init__(self,spacing:float,front:Front,debug:bool=False)->None:
+        self.front=front
 
         self.panels=self.advancing_front(spacing,debug)
 
         return None
-        
-    def Read(self,file:str)->list:
-        """
-        Reads STEP file and gets geometry faces (or surface) on which to generate mesh.
-
-        Parameters:
-        ----------
-        file: str; Input step file.
-
-        Returns:
-        --------
-        faces: list[gometry.Advanced_face]; List of face objects to generate mesh on.
-        """
-        geom_raw=Step_read(file,csv=False)
-        geom_dict=Data_sort(geom_raw)
-
-        #Plot_geom(geom_dict)
-        
-        faces=[x for x in geom_dict.values() if type(x).__name__=='Advanced_face']
-        if faces==[]:
-            raise StepException("No face defined in input file. Input model must contain a 2D face.")
-
-        return faces
-
-    def Init_front(self,faces:list,spacing:float)->list:
-        """
-        Initialises advancing front with surface boundaries.
-
-        Parameters:
-        -----------
-        faces: list[geometry.Advanced_faces]; Face (or surface) objects on which to generate mesh.
-        spacing: float; Node spacing for mesh generation. Smaller -> more refined mesh.
-
-        Returns:
-        -------
-        front: Front; Front object containing sides on boundaries of geometry.
-        """
-        sides=[]
-        for face in faces:
-            vect_out_plane=face.plane.axis.axis
-            for bound in face.bounds:
-                orientation=bound.orientation
-                edge_loop=bound.edge_loop
-                nodes=edge_loop.gen_nodes(spacing)
-
-                for i in range(len(nodes)-1):
-                    sides.append(Front_side(nodes[i],nodes[i+1],orientation,vect_out_plane))
-
-        front=Front(sides)
-
-        return front
 
     @staticmethod
     @nb.jit(nopython=True)
@@ -523,10 +465,67 @@ class Mesh():
 
         return panels
 
+        
+def read(file:str)->list:
+    """
+    Reads STEP file and gets geometry faces (or surface) on which to generate mesh.
+
+    Parameters:
+    ----------
+    file: str; Input step file.
+
+    Returns:
+    --------
+    faces: list[gometry.Advanced_face]; List of face objects to generate mesh on.
+    """
+    geom_raw=Step_read(file,csv=False)
+    geom_dict=Data_sort(geom_raw)
+
+    #Plot_geom(geom_dict)
+    
+    faces=[x for x in geom_dict.values() if type(x).__name__=='Advanced_face']
+    if faces==[]:
+        raise StepException("No face defined in input file. Input model must contain a 2D face.")
+
+    return faces
+
+def init_front(faces:list,spacing:float)->list:
+    """
+    Initialises advancing front with surface boundaries.
+
+    Parameters:
+    -----------
+    faces: list[geometry.Advanced_faces]; Face (or surface) objects on which to generate mesh.
+    spacing: float; Node spacing for mesh generation. Smaller -> more refined mesh.
+
+    Returns:
+    -------
+    front: Front; Front object containing sides on boundaries of geometry.
+    """
+    sides=[]
+    for face in faces:
+        vect_out_plane=face.plane.axis.axis
+        for bound in face.bounds:
+            orientation=bound.orientation
+            edge_loop=bound.edge_loop
+            nodes=edge_loop.gen_nodes(spacing)
+
+            for i in range(len(nodes)-1):
+                sides.append(Front_side(nodes[i],nodes[i+1],orientation,vect_out_plane))
+
+    front=Front(sides)
+
+    return front
+
+
 if __name__=="__main__":
     system('cls')
-    #mesh=Mesh(file='NACA0012H.stp',spacing=30,edge_layers=1)
-    mesh=Mesh(file='square_loop.stp',spacing=1,debug=False)
+
+    faces=read('square_loop.stp')
+    spacing=1
+
+    front=init_front(faces,spacing=spacing)
+    mesh=Mesh(front=front,spacing=spacing,debug=False)
     print('mesh done')
     
     Plot_panels(mesh.panels)

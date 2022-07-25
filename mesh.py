@@ -309,7 +309,8 @@ class Mesh():
 
             node2A_mod=np.linalg.norm(node2A)
             B2node_mod=np.linalg.norm(B2node)
-
+            """warning happening because filter is called before cases identified. Not an issue, just slows it
+            down a touch. Add something to stop it printing the warning"""
             angle_A=np.rad2deg(np.arccos(np.dot(node2A,current_side.vector)/(node2A_mod*current_side.length)))
             angle_B=np.rad2deg(np.arccos(np.dot(B2node,current_side.vector)/(B2node_mod*current_side.length)))
             
@@ -525,7 +526,7 @@ class Mesh():
 if __name__=="__main__":
     system('cls')
     #mesh=Mesh(file='NACA0012H.stp',spacing=30,edge_layers=1)
-    mesh=Mesh(file='circle.stp',spacing=0.3,debug=False)
+    mesh=Mesh(file='square_loop.stp',spacing=1,debug=False)
     print('mesh done')
     
     Plot_panels(mesh.panels)

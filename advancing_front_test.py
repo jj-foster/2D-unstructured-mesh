@@ -44,7 +44,7 @@ sides=[
 # Case 1b test:
 A=np.array([0,0,0])
 B=np.array([1,0,0])
-C=np.array([-2,2,0])
+C=np.array([-0.5,1.5,0])
 
 sides=[
     Front_side(A,B,orientation=False,vect_out_plane=vect_out_plane),
@@ -66,9 +66,9 @@ sides=[
 """
 system('cls')
 
-#Plot_sides(sides)
+Plot_sides(sides)
 
 front=Front(sides)
 
 mesh=Mesh(front=front,spacing=1,debug=True)
-#Plot_panels(panels)
+#Plot_panels(mesh.panels)

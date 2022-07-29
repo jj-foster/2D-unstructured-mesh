@@ -113,24 +113,24 @@ class Mesh():
     def __init__(self,spacing:float,front:Front,debug:bool=False)->None:
         self.front=front
 
-        profiler.enable()
+        #profiler.enable()
 
         self.panels=self.advancing_front(spacing,debug)
-
-        profiler.disable()
-        s=io.StringIO()
-        stats=pstats.Stats(profiler,stream=s)
-        stats.strip_dirs()
-        stats.sort_stats('cumtime')
-        stats.print_stats()
-
-        with open('profile.txt','w+') as f:
-            f.write(s.getvalue())
+        
+        #profiler.disable()
+        #s=io.StringIO()
+        #stats=pstats.Stats(profiler,stream=s)
+        #stats.strip_dirs()
+        #stats.sort_stats('cumtime')
+        #stats.print_stats()
+#
+        #with open('profile.txt','w+') as f:
+        #    f.write(s.getvalue())
 
         return None
 
     @staticmethod
-    @nb.jit(nopython=True)
+    #@nb.jit(nopython=True)
     def find_near_nodes(centre_node:np.ndarray,nodes:np.ndarray,r:float)->list:
         """
         Finds nodes in radius around centre node.
@@ -152,7 +152,7 @@ class Mesh():
         return near_nodes
     
     @staticmethod
-    @nb.jit(nopython=True)
+    #@nb.jit(nopython=True)
     def find_connected_sides(node:np.array,side_nodes:np.ndarray)->list:
         """
         Finds sides in the front attached to a node.
@@ -304,7 +304,7 @@ class Mesh():
         """
         panels=[]
         i=0
-        while True:
+        while i<1:
             if self.front.sides==[]:
                 break
 
@@ -352,7 +352,7 @@ class Mesh():
                 angle_A=np.rad2deg(np.arccos(np.dot(node2A,side.vector)/(node2A_mod*side.length)))
                 angle_B=np.rad2deg(np.arccos(np.dot(B2node,side.vector)/(B2node_mod*side.length)))
                 
-                if angle_A>=L_constraint[1] and angle_B>=R_constraint[1]:   #   if within angle constraints
+                if angle_A-5<L_constraint[1]<angle_A+5 and angle_B-5<R_constraint[1]<angle_B+5:   #   if within angle constraints
                     #   Case 1a:
                     C=C_ideal
 
@@ -406,7 +406,6 @@ class Mesh():
                             Front_side(A,C,orientation=side.orientation,vect_out_plane=side.vect_out_plane),
                             split
                         ]
-                    
                     else:
                         print('wot')
 
@@ -422,16 +421,6 @@ class Mesh():
                     if dist<min_dist:
                         min_dist=dist
                         nearest_node=node
-
-                """
-                ####    Checks if nearest node has sides connecting to current side    ####
-                shared_nodes={}
-                if L_constraint!=None:
-                    shared_nodes[L_constraint]=B
-                if R_constraint!=None:
-                    shared_nodes[R_constraint]=A
-                """
-                #end for
                 
                 shared_nodes={}
 
@@ -486,9 +475,9 @@ class Mesh():
                     panels.append(Panel(side.vect_out_plane,A,B,C))
             
             if debug==True:
-                if i>320:
-                    if (i/1).is_integer()==True:
-                        Plot_sides(np.array(self.front.sides))
+                #if i>320:
+                if (i/1).is_integer()==True:
+                    Plot_sides(np.array(self.front.sides))
 
             i+=1
         #end while
@@ -555,7 +544,7 @@ if __name__=="__main__":
 
     front=init_front(faces,spacing=spacing)
 
-    mesh=Mesh(front=front,spacing=spacing,debug=True)
+    mesh=Mesh(front=front,spacing=spacing,debug=False)
     print('mesh done')
     
     Plot_panels(mesh.panels)

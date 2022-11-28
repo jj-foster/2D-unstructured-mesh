@@ -43,14 +43,14 @@ Checks:
         if d<0 point on one side, if d>0 point on the other
         compare with known point to get side
         6. exclude nodes on left of left side, right of right side
-- DONE case 1:
+- case 1:
     if no close nodes
-- case 2:
+- DONE case 2:
     if close node and no close side
-- case 3:
+- DONE case 3:
     close side(s) = sides if a node = close node
     if one node in close side(s) = current side node
-- case 4:
+- DONE case 4:
     if 2 nodes in close sides = current side node
 
 ## STEP Datastructure:

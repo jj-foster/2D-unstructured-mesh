@@ -98,7 +98,7 @@ def Plot_geom(geom_dict:dict,cartesian_points:bool=True,
     ax.set_aspect('equal')
 
     #plt.tight_layout()
-    plt.ax()
+    plt.plt()
 
 def Plot_nodes_3d(nodes:np.ndarray,labels=False,ax=None,line=False):
     x,y,z=nodes.T
@@ -153,7 +153,7 @@ def Plot_nodes_2d(nodes:np.ndarray,labels=False,ax=None,line=False):
     if line==False:
         ax_.scatter(x,y,color='r',marker='x')
     else:
-        lines,=ax_.plot(x,y,'o-')
+        lines,=ax_.plot(x,y,'-',color='k')
 
     if labels==True:
         for i,node in enumerate(nodes):
@@ -168,7 +168,7 @@ def Plot_nodes_2d(nodes:np.ndarray,labels=False,ax=None,line=False):
     else:
         return plt
 
-def Plot_sides(sides,labels=False,line=True,ax=None):
+def Plot_sides(sides,labels=False,line=True,ax=None,nodes=True):
     if ax==None:
         fig=plt.figure()
         ax_=plt.axes()
@@ -195,7 +195,9 @@ def Plot_panels(panels,ax=None):
         ax_=plt.axes()
     else:
         ax_=ax
-
+    
+    figManager = plt.get_current_fig_manager()
+    figManager.window.showMaximized()
     for panel in panels:
         x,y,z=panel.points.T
 

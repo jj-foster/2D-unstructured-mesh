@@ -1,7 +1,8 @@
 from os import system
 import numpy as np
-from matplotlib.animation import ArtistAnimation
+from matplotlib import pyplot as plt
 import numba as nb
+from time import time,sleep
 
 from geometry import Step_read, Data_sort, Remove_duplicate_nodes
 from plot_tools import Plot_nodes_3d,Plot_nodes_2d,Plot_geom,Plot_sides,Plot_panels
@@ -57,7 +58,7 @@ class Front_side():
         self.x=self.vector/self.length
         self.y=np.cross(self.x,self.vect_out_plane)
 
-        if orientation==False:  #   Generate panels outside instead of inside:
+        if orientation==True:  #   Generate panels outside instead of inside:
             self.y=-self.y
 
         return None
@@ -302,9 +303,14 @@ class Mesh():
             panels: {list} -- List of generated tri panels.
 
         """
+        fig,ax=plt.subplots()
+        dt=[]
+        
+
         panels=[]
         i=0
         while True:
+            t0=time()
             if self.front.sides==[]:
                 break
 
@@ -489,14 +495,27 @@ class Mesh():
                 if i>320:
                     if (i/1).is_integer()==True:
                         Plot_sides(np.array(self.front.sides))
+            
+            #Plot_panels([panels[-1]],ax=ax)
+            #if i==1:
+            #    sleep(0.1)
+            #dt.append(time()-t0)
+
+
+            #Plot_sides(new_sides,ax=ax,nodes=False)
+            #plt.pause(0.001)
 
             i+=1
         #end while
-
+        #system('cls')
+        #with open('t.txt','w') as f:
+        #    f.write("\n".join([str(t) for t in dt]))
+        
+        plt.show()
         return panels
 
         
-def read(file:str)->list:
+def read(file:str,csv=False)->list:
     """
     Reads STEP file and gets geometry faces (or surface) on which to generate mesh.
 
@@ -508,7 +527,7 @@ def read(file:str)->list:
     --------
     faces: list[gometry.Advanced_face]; List of face objects to generate mesh on.
     """
-    geom_raw=Step_read(file,csv=False)
+    geom_raw=Step_read(file,csv=csv)
     geom_dict=Data_sort(geom_raw)
 
     #Plot_geom(geom_dict)
@@ -550,12 +569,13 @@ def init_front(faces:list,spacing:float)->list:
 if __name__=="__main__":
     #system('cls')
     
-    faces=read('square_loop.stp')
-    spacing=3
+    faces=read('shape.stp',csv=False)
+    spacing=4
+    #exit()
 
     front=init_front(faces,spacing=spacing)
 
-    mesh=Mesh(front=front,spacing=spacing,debug=True)
+    mesh=Mesh(front=front,spacing=spacing,debug=False)
     print('mesh done')
     
-    Plot_panels(mesh.panels)
+    #Plot_panels(mesh.panels)

@@ -205,7 +205,7 @@ class Trimmed_curve():
 class Polyline():
     """3D line connecting 2 cartesian points."""
     def __init__(self,raw_data:pd.Series=None,points:np.ndarray=None):
-        if raw_data!=None:
+        if type(raw_data)!=None:
             properties=raw_data['properties']
             points=properties[properties.find("(")+1:properties.find(")")].split(',')
 

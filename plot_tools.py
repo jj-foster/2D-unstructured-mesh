@@ -202,7 +202,7 @@ def Plot_panels(panels,ax=None):
         x,y,z=panel.points.T
 
         if panel.D==None:
-            ax_.plot(x,y,'-',color='k')
+            ax_.plot(x,y,'-',color='k',linewidth=1)
     
     ax_.set_aspect('equal')
     

@@ -303,7 +303,7 @@ class Mesh():
             panels: {list} -- List of generated tri panels.
 
         """
-        fig,ax=plt.subplots()
+        #fig,ax=plt.subplots()
         dt=[]
         
 
@@ -511,7 +511,7 @@ class Mesh():
         #with open('t.txt','w') as f:
         #    f.write("\n".join([str(t) for t in dt]))
         
-        plt.show()
+        #plt.show()
         return panels
 
         
@@ -538,7 +538,7 @@ def read(file:str,csv=False)->list:
 
     return faces
 
-def init_front(faces:list,spacing:float)->list:
+def init_front(faces:list,spacing:float,orientation_flip:bool)->list:
     """
     Initialises advancing front with surface boundaries.
 
@@ -555,7 +555,11 @@ def init_front(faces:list,spacing:float)->list:
     for face in faces:
         vect_out_plane=face.plane.axis.axis
         for bound in face.bounds:
-            orientation=bound.orientation
+
+            orientation=bool((1-bound.orientation*orientation_flip))
+            if bound.orientation==0 and orientation_flip==0:
+                orientation=False
+
             edge_loop=bound.edge_loop
             nodes=edge_loop.gen_nodes(spacing)
 
@@ -569,13 +573,15 @@ def init_front(faces:list,spacing:float)->list:
 if __name__=="__main__":
     #system('cls')
     
-    faces=read('shape.stp',csv=False)
-    spacing=4
+    faces=read('NACA0012H.stp',csv=False)
+    print("read")
+    spacing=3
     #exit()
 
-    front=init_front(faces,spacing=spacing)
+    front=init_front(faces,spacing=spacing,orientation_flip=True)
+    print("front")
 
     mesh=Mesh(front=front,spacing=spacing,debug=False)
     print('mesh done')
     
-    #Plot_panels(mesh.panels)
+    Plot_panels(mesh.panels)

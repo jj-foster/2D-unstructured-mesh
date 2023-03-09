@@ -1,4 +1,4 @@
-from matplotlib import pyplot as plt
+import matplotlib.pyplot as plt
 import numpy as np
 
 def Plot_cartesian_points(points:list,ax=None)->plt:
@@ -98,7 +98,7 @@ def Plot_geom(geom_dict:dict,cartesian_points:bool=True,
     ax.set_aspect('equal')
 
     #plt.tight_layout()
-    plt.plt()
+    plt.show()
 
 def Plot_nodes_3d(nodes:np.ndarray,labels=False,ax=None,line=False):
     x,y,z=nodes.T

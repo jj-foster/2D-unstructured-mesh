@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import re
 from scipy.interpolate import BSpline, splev
-from matplotlib import pyplot as plt
+import matplotlib.pyplot as plt
 
 from plot_tools import Plot_geom, Plot_nodes_2d
 
@@ -600,7 +600,7 @@ def Step_read(file:str,csv=False)->pd.Series:
     
     data_str=[x.strip() for x in data_str]  #   removes /n from strings
 
-    data_str="".join(data_str)  #   merges everything into one long string (strp files sometimes segment lines)
+    data_str="".join(data_str)  #   merges everything into one long string (step files sometimes segment lines)
     data_str=data_str.split(';')    #   then splits by each data instance
     if data_str[-1]=="":    #   removes trailing file format bits
         data_str.pop(-1)
@@ -619,7 +619,6 @@ def Step_read(file:str,csv=False)->pd.Series:
         data=pd.concat([data,pd.DataFrame.from_records([{'id':id,'tag':tag,'properties':properties}])],ignore_index=True)
 
     data.dropna(axis=0,inplace=True)    #   removes blank entries
-    #data=data[data['tag'].isin(DATA_HIERARCHY)]  #   removes entries that contain waffle data
 
     if csv==True:
         data.to_csv('data.csv')
@@ -695,8 +694,25 @@ def Remove_duplicate_nodes(nodes:np.ndarray):
 
     return np.array(nodes_)
 
+def export_stp_pts(geom_dict: dict, export_file: str) -> None:
+    
+    points = [x for x in geom_dict.values() if type(x).__name__=='Cartesian_point']  
+    x = [point.coords[0] for point in points]
+    y = [point.coords[1] for point in points]
+    z = [point.coords[2] for point in points]
+
+    with open(f"{export_file}.pts",'w') as f:
+        f.write(f"{len(x)}, 1\n")
+
+        for i,_ in enumerate(x):
+            f.write(f"{x[i]}, {y[i]}, {z[i]}\n")
+
+    return None
+
 if __name__=="__main__":
-    geom_raw=Step_read('square_donut2.stp',csv=True)
+    geom_raw=Step_read('profile.stp',csv=True)
     geom_dict=Data_sort(geom_raw)
 
     Plot_geom(geom_dict,cartesian_points=True,polylines=True,circles=True)
+
+    export_stp_pts(geom_dict, "profile.stp")
